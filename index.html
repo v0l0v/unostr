@@ -7,15 +7,31 @@
     <title>Unostr - Relay Connect</title>
     <style>
         :root {
+            /* Light Theme (Default Dusty Blue) */
             --color-bg: #F1FAFF;
-            --color-surface: #D4EFFD;
+            --color-surface: rgba(212, 239, 253, 0.6);
             --color-primary: #79C7F7;
             --color-text-secondary: #3D6A8C;
             --color-text-primary: #1E3A5F;
-            --glass: rgba(212, 239, 253, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --glass-shadow: rgba(30, 58, 95, 0.08);
+            
             --error: #ef4444;
             --success: #10b981;
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        [data-theme="dark"] {
+            /* Dark Theme (Deep Space Dusty Blue) */
+            --color-bg: #0A1120;
+            --color-surface: rgba(30, 58, 95, 0.4);
+            --color-primary: #79C7F7;
+            --color-text-secondary: #94A3B8;
+            --color-text-primary: #F1FAFF;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: rgba(0, 0, 0, 0.4);
+        }
+
         body {
             background-color: var(--color-bg);
             color: var(--color-text-primary);
@@ -25,24 +41,67 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            transition: var(--transition);
             background-image: 
-                radial-gradient(at 0% 0%, hsla(203,100%,90%,1) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, hsla(202,100%,85%,1) 0, transparent 50%);
+                radial-gradient(at 0% 0%, hsla(203,100%,90%,0.15) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(202,100%,85%,0.1) 0, transparent 50%);
+        }
+
+        [data-theme="dark"] body {
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(121, 199, 247, 0.05) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, rgba(30, 58, 95, 0.2) 0, transparent 50%);
         }
         .container {
+            position: relative;
             text-align: center;
             animation: fadeIn 0.8s ease-out;
-            background: var(--glass);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            padding: 3rem;
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            background: var(--color-surface);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 3.5rem 3rem;
+            border-radius: 40px;
+            border: 1px solid var(--glass-border);
             box-shadow: 
-                0 20px 25px -5px rgba(30, 58, 95, 0.05),
-                0 10px 10px -5px rgba(30, 58, 95, 0.02);
+                0 25px 50px -12px var(--glass-shadow),
+                inset 0 1px 1px var(--glass-border);
             max-width: 500px;
             width: 90%;
+            transition: var(--transition);
+        }
+
+        /* Theme Toggle styles */
+        .theme-toggle {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: rgba(30, 58, 95, 0.05);
+            border: 1px solid var(--glass-border);
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--color-text-secondary);
+        }
+
+        .theme-toggle:hover {
+            background: var(--color-primary);
+            color: white;
+            transform: rotate(15deg);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         h1 {
             font-size: 2.5rem;
@@ -222,6 +281,13 @@
 </head>
 <body>
     <div class="container">
+        <button id="theme-toggle" class="theme-toggle" aria-label="Cambiar tema">
+            <!-- Icono Luna (para pasar a oscuro) -->
+            <svg id="theme-icon-dark" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            <!-- Icono Sol (para pasar a claro) -->
+            <svg id="theme-icon-light" style="display:none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+
         <div class="login-area">
             <button id="login-btn" class="btn-login">Login con NIP-07</button>
             <div id="profile-badge" class="profile-badge"></div>
@@ -396,6 +462,33 @@
                 publishBtn.disabled = false;
                 publishBtn.textContent = 'Publicar';
             }
+        });
+
+        // Theme Management
+        const themeToggle = document.getElementById('theme-toggle');
+        const darkIcon = document.getElementById('theme-icon-dark');
+        const lightIcon = document.getElementById('theme-icon-light');
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            if (theme === 'dark') {
+                darkIcon.style.display = 'none';
+                lightIcon.style.display = 'block';
+            } else {
+                darkIcon.style.display = 'block';
+                lightIcon.style.display = 'none';
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme') || 
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        applyTheme(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
         });
     </script>
 
