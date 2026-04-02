@@ -144,6 +144,37 @@
             color: #64748b;
             display: none;
         }
+        .login-area {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .btn-login {
+            background-color: rgba(139, 92, 246, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-login:hover {
+            background-color: rgba(139, 92, 246, 0.2);
+            transform: translateY(-1px);
+        }
+        .profile-badge {
+            display: none;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -156,6 +187,11 @@
 </head>
 <body>
     <div class="container">
+        <div class="login-area">
+            <button id="login-btn" class="btn-login">Login con Alby/Nostr</button>
+            <div id="profile-badge" class="profile-badge"></div>
+        </div>
+
         <h1>Unostr</h1>
         
         <div class="relay-selector">
@@ -174,7 +210,10 @@
     </div>
 
     <script type="module">
-        import { Relay } from 'https://esm.sh/nostr-tools@2.20.0';
+        import { Relay, nip19 } from 'https://esm.sh/nostr-tools@2.20.0';
+
+        const loginBtn = document.getElementById('login-btn');
+        const profileBadge = document.getElementById('profile-badge');
 
         const relayInput = document.getElementById('relay-url');
         const relayLabel = document.getElementById('relay-label');
@@ -238,6 +277,31 @@
             } finally {
                 connectBtn.disabled = false;
                 connectBtn.textContent = 'Conectar';
+            }
+        });
+
+        // NIP-07 Login Logic
+        loginBtn.addEventListener('click', async () => {
+            if (!window.nostr) {
+                alert('No se detectó ninguna extensión de Nostr. Instala Alby o nos2x.');
+                return;
+            }
+
+            try {
+                const pubKey = await window.nostr.getPublicKey();
+                const npub = nip19.npubEncode(pubKey);
+                
+                // Mostrar npub truncado: npub1...abcd
+                const displayNpub = `${npub.substring(0, 10)}...${npub.substring(npub.length - 4)}`;
+                
+                profileBadge.textContent = displayNpub;
+                profileBadge.style.display = 'block';
+                loginBtn.style.display = 'none';
+                
+                console.log('Logged in as:', npub);
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Error al obtener la clave pública: ' + error.message);
             }
         });
     </script>
