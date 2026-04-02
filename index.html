@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -62,6 +62,12 @@
             z-index: 100;
         }
 
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
         .brand {
             font-weight: 800;
             font-size: 1.25rem;
@@ -71,6 +77,34 @@
         }
 
         .brand span { color: var(--text-primary); }
+
+        /* Language Toggle Stylings */
+        .lang-selector {
+            display: flex;
+            gap: 2px;
+            background: var(--bg-base);
+            padding: 2px;
+            border-radius: 4px;
+            border: 1px solid var(--border-dim);
+        }
+
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: var(--transition);
+        }
+
+        .lang-btn.active {
+            background: var(--accent-cyan);
+            color: var(--bg-base);
+        }
 
         .header-actions {
             display: flex;
@@ -310,6 +344,7 @@
         /* Media Queries for Responsive Design */
         @media (max-width: 600px) {
             header { padding: 1rem; }
+            .brand-container { gap: 0.5rem; flex-direction: column; align-items: flex-start; }
             main { padding: 1rem; }
             .btn-group { flex-direction: column; }
             .btn { width: 100%; }
@@ -322,10 +357,16 @@
 </head>
 <body>
     <header>
-        <div class="brand">UNOSTR //<span>CLIENT</span></div>
+        <div class="brand-container">
+            <div class="brand">UNOSTR //<span>CLIENT</span></div>
+            <div class="lang-selector">
+                <button id="lang-en" class="lang-btn active">EN</button>
+                <button id="lang-es" class="lang-btn">ES</button>
+            </div>
+        </div>
         <div class="header-actions">
-            <div id="ws-status" class="status-badge status-offline">NOT_CONNECTED</div>
-            <button id="login-btn" class="btn">Login (NIP-07)</button>
+            <div id="ws-status" class="status-badge status-offline" data-i18n="conn_not_connected">NOT_CONNECTED</div>
+            <button id="login-btn" class="btn" data-i18n="login_nip07">Login (NIP-07)</button>
             <div id="profile-badge" class="hidden status-badge status-online"></div>
         </div>
     </header>
@@ -333,35 +374,35 @@
     <main>
         <!-- Relay Config / Jakob Nielsen Heuristic #5 User Control & Freedom -->
         <section class="card">
-            <div class="section-title">Connectivity Config</div>
+            <div class="section-title" data-i18n="section_conn">Connectivity Config</div>
             <div class="tabs">
-                <button id="btn-public" class="tab active">Public_Network</button>
-                <button id="btn-private" class="tab">Tor_Encrypted</button>
+                <button id="btn-public" class="tab active" data-i18n="network_public">Public_Network</button>
+                <button id="btn-private" class="tab" data-i18n="network_private">Tor_Encrypted</button>
             </div>
             
             <div class="input-wrapper">
-                <label for="relay-url">RELAY_URI</label>
+                <label for="relay-url" data-i18n="relay_uri_label">RELAY_URI</label>
                 <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
-                <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;">[WARNING] Onion address requires Tor Network browser.</p>
+                <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;" data-i18n="tor_warning">[WARNING] Onion address requires Tor Network browser.</p>
             </div>
 
             <div class="btn-group">
-                <button id="connect-btn" class="btn primary">Establish_Connection</button>
+                <button id="connect-btn" class="btn primary" data-i18n="btn_establish_conn">Establish_Connection</button>
             </div>
         </section>
 
         <!-- Broadcast Section / Nielsen Efficiency -->
         <section id="post-area" class="card hidden">
-            <div class="section-title">Broadcast Data</div>
+            <div class="section-title" data-i18n="section_broadcast">Broadcast Data</div>
             <div class="input-wrapper">
-                <textarea id="post-content" placeholder="// Write message for the void..."></textarea>
+                <textarea id="post-content" data-i18n-placeholder="msg_placeholder" placeholder="// Write message for the void..."></textarea>
             </div>
-            <button id="publish-btn" class="btn primary">Sign & Broadcast</button>
+            <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Sign & Broadcast</button>
         </section>
 
         <!-- Recent Data Stream -->
         <section id="feed-container" class="card hidden">
-            <div class="section-title">Data Stream [Kind 1]</div>
+            <div class="section-title" data-i18n="section_stream">Data Stream [Kind 1]</div>
             <div id="feed-list"></div>
         </section>
     </main>
@@ -369,16 +410,83 @@
     <!-- Nielsen System Visibility Console -->
     <footer>
         <div class="console-header">
-            <span>System Console // Nostr Events</span>
-            <span id="console-status">READY</span>
+            <span data-i18n="console_title">System Console // Nostr Events</span>
+            <span id="console-status" data-i18n="console_ready">READY</span>
         </div>
         <div id="console-log">
-            <div class="log-entry"><span class="log-time">00:00:00</span> <span class="log-warn">[SYS] Dashboard initialized. Awaiting user interaction.</span></div>
+            <div class="log-entry"><span class="log-time">00:00:00</span> <span class="log-warn" data-i18n="log_init">[SYS] Dashboard initialized. Awaiting user interaction.</span></div>
         </div>
     </footer>
 
     <script type="module">
         import { Relay, nip19 } from 'https://esm.sh/nostr-tools@2.20.0';
+
+        const TRANSLATIONS = {
+            en: {
+                conn_not_connected: 'NOT_CONNECTED',
+                login_nip07: 'Login (NIP-07)',
+                section_conn: 'Connectivity Config',
+                network_public: 'Public_Network',
+                network_private: 'Tor_Encrypted',
+                relay_uri_label: 'RELAY_URI',
+                tor_warning: '[WARNING] Onion address requires Tor Network browser.',
+                btn_establish_conn: 'Establish_Connection',
+                btn_establishing: 'ESTABLISHING...',
+                section_broadcast: 'Broadcast Data',
+                msg_placeholder: '// Write message for the void...',
+                btn_sign_broadcast: 'Sign & Broadcast',
+                btn_signing: 'SIGNING...',
+                section_stream: 'Data Stream [Kind 1]',
+                console_title: 'System Console // Nostr Events',
+                console_ready: 'READY',
+                console_stream: 'STREAM_ACTIVE',
+                log_init: '[SYS] Dashboard initialized. Awaiting user interaction.',
+                log_connecting: 'Attempting connection to: ',
+                log_connected: 'Successfully connected to ',
+                log_disconnected: 'Disconnected from ',
+                log_sub_start: 'Starting subscription kind:1 for ',
+                log_auth_start: 'Requesting public key from extension...',
+                log_auth_success: 'Identity verified: ',
+                log_sign_start: 'Requesting signature for Event Kind 1...',
+                log_publish_start: 'Event signed. Publishing ID: ',
+                log_publish_success: 'Relay confirmed receipt [OK].',
+                log_error: 'Error: ',
+                status_connected: 'CONNECTED // ',
+                publish_btn_label: 'Sign & Broadcast'
+            },
+            es: {
+                conn_not_connected: 'NO_CONECTADO',
+                login_nip07: 'Acceder (NIP-07)',
+                section_conn: 'Configuración de Conexión',
+                network_public: 'Red_Pública',
+                network_private: 'Tor_Cifrado',
+                relay_uri_label: 'URI_DEL_RELAY',
+                tor_warning: '[AVISO] Las direcciones .onion requieren el navegador Tor.',
+                btn_establish_conn: 'Establecer_Conexión',
+                btn_establishing: 'ESTABLECIENDO...',
+                section_broadcast: 'Transmitir Datos',
+                msg_placeholder: '// Escribe un mensaje para el vacío...',
+                btn_sign_broadcast: 'Firmar y Transmitir',
+                btn_signing: 'FIRMANDO...',
+                section_stream: 'Flujo de Datos [Tipo 1]',
+                console_title: 'Consola del Sistema // Eventos Nostr',
+                console_ready: 'LISTO',
+                console_stream: 'STREAM_ACTIVO',
+                log_init: '[SYS] Panel inicializado. Esperando interacción del usuario.',
+                log_connecting: 'Intentando conexión a: ',
+                log_connected: 'Conectado exitosamente a ',
+                log_disconnected: 'Desconectado de ',
+                log_sub_start: 'Iniciando suscripción tipo:1 para ',
+                log_auth_start: 'Solicitando clave pública a la extensión...',
+                log_auth_success: 'Identidad verificada: ',
+                log_sign_start: 'Solicitando firma para Evento Tipo 1...',
+                log_publish_start: 'Evento firmado. Publicando ID: ',
+                log_publish_success: 'Relay confirmó recepción [OK].',
+                log_error: 'Error: ',
+                status_connected: 'CONECTADO // ',
+                publish_btn_label: 'Firmar y Transmitir'
+            }
+        };
 
         const loginBtn = document.getElementById('login-btn');
         const profileBadge = document.getElementById('profile-badge');
@@ -401,9 +509,13 @@
         const consoleLog = document.getElementById('console-log');
         const consoleStatus = document.getElementById('console-status');
 
+        const langEn = document.getElementById('lang-en');
+        const langEs = document.getElementById('lang-es');
+
         let currentRelay = null;
         let userPubKey = null;
         let currentSub = null;
+        let currentLang = 'en';
 
         const DEFAULTS = {
             public: 'wss://nos.lol',
@@ -411,11 +523,44 @@
         };
 
         // UI Helpers
-        function log(msg, type = 'info') {
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            
+            // Toggle active class
+            langEn.classList.toggle('active', lang === 'en');
+            langEs.classList.toggle('active', lang === 'es');
+
+            // Update all data-i18n elements
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (TRANSLATIONS[lang][key]) {
+                    el.textContent = TRANSLATIONS[lang][key];
+                }
+            });
+
+            // Update placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (TRANSLATIONS[lang][key]) {
+                    el.placeholder = TRANSLATIONS[lang][key];
+                }
+            });
+
+            // Dynamic states
+            checkAppState();
+        }
+
+        langEn.addEventListener('click', () => setLanguage('en'));
+        langEs.addEventListener('click', () => setLanguage('es'));
+
+        function log(msgKey, extra = '', type = 'info') {
             const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
             const entry = document.createElement('div');
             entry.className = `log-entry ${type === 'warn' ? 'log-warn' : type === 'error' ? 'log-error' : ''}`;
-            entry.innerHTML = `<span class="log-time">${time}</span> ${msg}`;
+            
+            const trans = TRANSLATIONS[currentLang][msgKey] || msgKey;
+            entry.innerHTML = `<span class="log-time">${time}</span> ${trans}${extra}`;
             consoleLog.prepend(entry);
         }
 
@@ -423,10 +568,10 @@
             if (currentRelay) {
                 feedContainer.classList.remove('hidden');
                 wsStatus.className = 'status-badge status-online';
-                wsStatus.textContent = `CONNECTED // ${currentRelay.url.split('://')[1]}`;
+                wsStatus.textContent = `${TRANSLATIONS[currentLang].status_connected}${currentRelay.url.split('://')[1]}`;
             } else {
                 wsStatus.className = 'status-badge status-offline';
-                wsStatus.textContent = 'NOT_CONNECTED';
+                wsStatus.textContent = TRANSLATIONS[currentLang].conn_not_connected;
             }
             if (currentRelay && userPubKey) {
                 postArea.classList.remove('hidden');
@@ -462,7 +607,7 @@
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
             feedList.innerHTML = '';
-            log(`Starting subscription kind:1 for ${relay.url}`);
+            log('log_sub_start', relay.url);
 
             currentSub = relay.subscribe([
                 { kinds: [1], limit: 20 }
@@ -473,8 +618,8 @@
                     if (feedList.childElementCount > 30) feedList.removeChild(feedList.lastChild);
                 },
                 oneose() {
-                    log(`Historical data loaded from ${relay.url}`);
-                    consoleStatus.textContent = 'STREAM_ACTIVE';
+                    log('log_connected', relay.url);
+                    consoleStatus.textContent = TRANSLATIONS[currentLang].console_stream;
                 }
             });
         }
@@ -496,19 +641,19 @@
 
         connectBtn.addEventListener('click', async () => {
             const url = relayInput.value.trim();
-            if (!url) return log('Error: Invalid Relay URI', 'error');
+            if (!url) return log('log_error', 'Invalid Relay URI', 'error');
 
             connectBtn.disabled = true;
-            connectBtn.textContent = 'ESTABLISHING...';
-            log(`Attempting connection to: ${url}`);
+            connectBtn.textContent = TRANSLATIONS[currentLang].btn_establishing;
+            log('log_connecting', url);
 
             try {
                 if (currentRelay) await currentRelay.close();
                 currentRelay = await Relay.connect(url);
-                log(`Successfully connected to ${currentRelay.url}`);
+                log('log_connected', currentRelay.url);
                 
                 currentRelay.onclose = () => {
-                    log(`Disconnected from ${url}`, 'error');
+                    log('log_disconnected', url, 'error');
                     currentRelay = null;
                     postArea.classList.add('hidden');
                     feedContainer.classList.add('hidden');
@@ -520,27 +665,27 @@
                 checkAppState();
 
             } catch (error) {
-                log(`Connection Failed: ${error.message}`, 'error');
+                log('log_error', error.message, 'error');
             } finally {
                 connectBtn.disabled = false;
-                connectBtn.textContent = 'Establish_Connection';
+                connectBtn.textContent = TRANSLATIONS[currentLang].btn_establish_conn;
             }
         });
 
         loginBtn.addEventListener('click', async () => {
-            if (!window.nostr) return log('NIP-07 plugin not found. Check browser extensions.', 'error');
+            if (!window.nostr) return log('log_error', 'NIP-07 plugin not found.', 'error');
 
             try {
-                log('Requesting public key from extension...');
+                log('log_auth_start');
                 userPubKey = await window.nostr.getPublicKey();
                 const npub = nip19.npubEncode(userPubKey);
                 profileBadge.textContent = `${npub.substring(0, 8)}...`;
                 profileBadge.classList.remove('hidden');
                 loginBtn.classList.add('hidden');
-                log(`Identity verified: ${npub}`);
+                log('log_auth_success', npub);
                 checkAppState();
             } catch (error) {
-                log(`Auth failed: ${error.message}`, 'error');
+                log('log_error', error.message, 'error');
             }
         });
 
@@ -548,11 +693,11 @@
             const content = postContent.value.trim();
             if (!content) return;
 
-            if (!currentRelay) return log('Error: Cannot sign without active connection.', 'error');
+            if (!currentRelay) return log('log_error', 'No connection.', 'error');
 
             publishBtn.disabled = true;
-            publishBtn.textContent = 'SIGNING...';
-            log('Requesting signature for Event Kind 1...');
+            publishBtn.textContent = TRANSLATIONS[currentLang].btn_signing;
+            log('log_sign_start');
 
             try {
                 const eventTemplate = {
@@ -563,7 +708,7 @@
                 };
 
                 const signedEvent = await window.nostr.signEvent(eventTemplate);
-                log(`Event signed. Publishing ID: ${signedEvent.id.substring(0, 8)}...`);
+                log('log_publish_start', `${signedEvent.id.substring(0, 8)}...`);
                 
                 const publishTimeout = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Relay confirmation timeout (10s).')), 10000)
@@ -574,15 +719,20 @@
                     publishTimeout
                 ]);
 
-                log('Relay confirmed receipt [OK].', 'info');
+                log('log_publish_success');
                 postContent.value = '';
             } catch (error) {
-                log(`Broadcast failed: ${error.message}`, 'warn');
+                log('log_error', error.message, 'warn');
             } finally {
                 publishBtn.disabled = false;
-                publishBtn.textContent = 'Sign & Broadcast';
+                publishBtn.textContent = TRANSLATIONS[currentLang].publish_btn_label;
             }
         });
+
+        // Initialize with Spanish by default as requested by the user
+        setLanguage('es');
+
+
     </script>
 </body>
 </html>
