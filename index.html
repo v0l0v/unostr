@@ -371,7 +371,7 @@
 
         <div class="input-group">
             <label for="relay-url" id="relay-label">Relay Público</label>
-            <input type="text" id="relay-url" placeholder="wss://..." value="wss://relay.damus.io">
+            <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
             <p id="tor-note" class="note">Este relay requiere Tor Browser o un proxy configurado.</p>
         </div>
 
@@ -416,7 +416,7 @@
         let currentSub = null;
 
         const DEFAULTS = {
-            public: 'wss://relay.damus.io',
+            public: 'wss://nos.lol',
             private: 'ws://34tam2wfzzz7b5ai2oyuzhyozgjzvo4rrw3mzk4odjcspnkprtspqsqd.onion'
         };
 
@@ -591,7 +591,16 @@
                 };
 
                 const signedEvent = await window.nostr.signEvent(eventTemplate);
-                await currentRelay.publish(signedEvent);
+                
+                // Añadimos un timeout manual de 10s por si el relay es lento con el OK
+                const publishTimeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('El relay tardó demasiado en confirmar. Es posible que el mensaje se haya publicado de todas formas.')), 10000)
+                );
+
+                await Promise.race([
+                    currentRelay.publish(signedEvent),
+                    publishTimeout
+                ]);
                 
                 setStatus('¡Mensaje publicado con éxito!', 'success');
                 postContent.value = ''; // Limpiar tras el éxito
