@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="es" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -298,32 +298,109 @@
         .log-warn { color: var(--accent-amber); }
         .log-error { color: var(--accent-red); }
 
-        /* Feed: Information Density */
+        /* Feed: Information Density & Identity */
         .event-card {
-            border-left: 2px solid var(--border-dim);
-            padding-left: 1rem;
-            margin-bottom: 1.5rem;
+            border-top: 1px solid var(--border-dim);
+            padding: 1.5rem 0;
             position: relative;
+            transition: var(--transition);
         }
 
-        .event-card:hover { border-left-color: var(--accent-cyan); }
+        .event-card:hover { background: rgba(0, 242, 255, 0.02); }
+
+        .event-header {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .event-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-dim);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .event-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .event-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .event-name {
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
 
         .event-meta {
             font-size: 0.7rem;
             display: flex;
-            gap: 1rem;
-            margin-bottom: 0.5rem;
+            gap: 0.5rem;
             color: var(--text-dim);
         }
 
-        .event-npub { color: var(--accent-cyan); font-weight: 700; }
+        .event-npub { color: var(--accent-cyan); }
 
         .event-content {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: var(--text-primary);
             white-space: pre-wrap;
             word-break: break-word;
+            padding-left: 50px; /* Aligned with content below avatar */
         }
+
+        /* Inspector Toggle / Technical usability */
+        .event-actions {
+            position: absolute;
+            top: 1.5rem;
+            right: 0;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-inspect {
+            background: transparent;
+            border: 1px solid var(--border-dim);
+            color: var(--text-dim);
+            font-size: 0.65rem;
+            font-family: inherit;
+            padding: 2px 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-inspect:hover {
+            color: var(--accent-amber);
+            border-color: var(--accent-amber);
+        }
+
+        .inspector-panel {
+            margin-top: 1rem;
+            background: #0d0e12;
+            border: 1px solid var(--border-dim);
+            padding: 1rem;
+            font-size: 0.75rem;
+            color: var(--accent-amber);
+            overflow-x: auto;
+            display: none;
+            white-space: pre;
+            max-height: 400px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .inspector-panel.visible { display: block; }
 
         /* Status Badges */
         .status-badge {
@@ -341,16 +418,15 @@
         .status-online { color: var(--accent-green); border-color: rgba(0, 255, 65, 0.2); background: rgba(0, 255, 65, 0.05); }
         .status-offline { color: var(--accent-red); border-color: rgba(255, 62, 62, 0.2); background: rgba(255, 62, 62, 0.05); }
 
-        /* Media Queries for Responsive Design */
+        /* Media Queries */
         @media (max-width: 600px) {
             header { padding: 1rem; }
             .brand-container { gap: 0.5rem; flex-direction: column; align-items: flex-start; }
             main { padding: 1rem; }
-            .btn-group { flex-direction: column; }
-            .btn { width: 100%; }
+            .event-content { padding-left: 0; margin-top: 0.5rem; }
+            .event-avatar { width: 32px; height: 32px; }
         }
 
-        /* Utilities */
         .hidden { display: none !important; }
         .amber { color: var(--accent-amber); }
     </style>
@@ -360,13 +436,13 @@
         <div class="brand-container">
             <div class="brand">UNOSTR //<span>CLIENT</span></div>
             <div class="lang-selector">
-                <button id="lang-en" class="lang-btn active">EN</button>
-                <button id="lang-es" class="lang-btn">ES</button>
+                <button id="lang-en" class="lang-btn">EN</button>
+                <button id="lang-es" class="lang-btn active">ES</button>
             </div>
         </div>
         <div class="header-actions">
-            <div id="ws-status" class="status-badge status-offline" data-i18n="conn_not_connected">NOT_CONNECTED</div>
-            <button id="login-btn" class="btn" data-i18n="login_nip07">Login (NIP-07)</button>
+            <div id="ws-status" class="status-badge status-offline" data-i18n="conn_not_connected">NO_CONECTADO</div>
+            <button id="login-btn" class="btn" data-i18n="login_nip07">Acceder (NIP-07)</button>
             <div id="profile-badge" class="hidden status-badge status-online"></div>
         </div>
     </header>
@@ -374,35 +450,35 @@
     <main>
         <!-- Relay Config / Jakob Nielsen Heuristic #5 User Control & Freedom -->
         <section class="card">
-            <div class="section-title" data-i18n="section_conn">Connectivity Config</div>
+            <div class="section-title" data-i18n="section_conn">Configuración de Conexión</div>
             <div class="tabs">
-                <button id="btn-public" class="tab active" data-i18n="network_public">Public_Network</button>
-                <button id="btn-private" class="tab" data-i18n="network_private">Tor_Encrypted</button>
+                <button id="btn-public" class="tab active" data-i18n="network_public">Red_Pública</button>
+                <button id="btn-private" class="tab" data-i18n="network_private">Tor_Cifrado</button>
             </div>
             
             <div class="input-wrapper">
-                <label for="relay-url" data-i18n="relay_uri_label">RELAY_URI</label>
+                <label for="relay-url" data-i18n="relay_uri_label">URI_DEL_RELAY</label>
                 <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
-                <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;" data-i18n="tor_warning">[WARNING] Onion address requires Tor Network browser.</p>
+                <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;" data-i18n="tor_warning">[AVISO] Las direcciones .onion requieren el navegador Tor.</p>
             </div>
 
             <div class="btn-group">
-                <button id="connect-btn" class="btn primary" data-i18n="btn_establish_conn">Establish_Connection</button>
+                <button id="connect-btn" class="btn primary" data-i18n="btn_establish_conn">Establecer_Conexión</button>
             </div>
         </section>
 
         <!-- Broadcast Section / Nielsen Efficiency -->
         <section id="post-area" class="card hidden">
-            <div class="section-title" data-i18n="section_broadcast">Broadcast Data</div>
+            <div class="section-title" data-i18n="section_broadcast">Transmitir Datos</div>
             <div class="input-wrapper">
-                <textarea id="post-content" data-i18n-placeholder="msg_placeholder" placeholder="// Write message for the void..."></textarea>
+                <textarea id="post-content" data-i18n-placeholder="msg_placeholder" placeholder="// Escribe un mensaje para el vacío..."></textarea>
             </div>
-            <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Sign & Broadcast</button>
+            <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Firmar y Transmitir</button>
         </section>
 
         <!-- Recent Data Stream -->
         <section id="feed-container" class="card hidden">
-            <div class="section-title" data-i18n="section_stream">Data Stream [Kind 1]</div>
+            <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
             <div id="feed-list"></div>
         </section>
     </main>
@@ -410,11 +486,11 @@
     <!-- Nielsen System Visibility Console -->
     <footer>
         <div class="console-header">
-            <span data-i18n="console_title">System Console // Nostr Events</span>
-            <span id="console-status" data-i18n="console_ready">READY</span>
+            <span data-i18n="console_title">Consola del Sistema // Eventos Nostr</span>
+            <span id="console-status" data-i18n="console_ready">LISTO</span>
         </div>
         <div id="console-log">
-            <div class="log-entry"><span class="log-time">00:00:00</span> <span class="log-warn" data-i18n="log_init">[SYS] Dashboard initialized. Awaiting user interaction.</span></div>
+            <div class="log-entry"><span class="log-time">00:00:00</span> <span class="log-warn" data-i18n="log_init">[SYS] Panel inicializado. Esperando interacción del usuario.</span></div>
         </div>
     </footer>
 
@@ -450,6 +526,8 @@
                 log_sign_start: 'Requesting signature for Event Kind 1...',
                 log_publish_start: 'Event signed. Publishing ID: ',
                 log_publish_success: 'Relay confirmed receipt [OK].',
+                log_profile_init: 'Contacting network for profile: ',
+                log_profile_ok: 'Profile data cached for: ',
                 log_error: 'Error: ',
                 status_connected: 'CONNECTED // ',
                 publish_btn_label: 'Sign & Broadcast'
@@ -482,6 +560,8 @@
                 log_sign_start: 'Solicitando firma para Evento Tipo 1...',
                 log_publish_start: 'Evento firmado. Publicando ID: ',
                 log_publish_success: 'Relay confirmó recepción [OK].',
+                log_profile_init: 'Contactando red para el perfil: ',
+                log_profile_ok: 'Perfil almacenado para: ',
                 log_error: 'Error: ',
                 status_connected: 'CONECTADO // ',
                 publish_btn_label: 'Firmar y Transmitir'
@@ -515,7 +595,10 @@
         let currentRelay = null;
         let userPubKey = null;
         let currentSub = null;
-        let currentLang = 'en';
+        let currentLang = 'es';
+
+        // Identity Cache
+        const PROFILES = {}; 
 
         const DEFAULTS = {
             public: 'wss://nos.lol',
@@ -526,28 +609,19 @@
         function setLanguage(lang) {
             currentLang = lang;
             document.documentElement.lang = lang;
-            
-            // Toggle active class
             langEn.classList.toggle('active', lang === 'en');
             langEs.classList.toggle('active', lang === 'es');
 
-            // Update all data-i18n elements
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
-                if (TRANSLATIONS[lang][key]) {
-                    el.textContent = TRANSLATIONS[lang][key];
-                }
+                if (TRANSLATIONS[lang][key]) el.textContent = TRANSLATIONS[lang][key];
             });
 
-            // Update placeholders
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.getAttribute('data-i18n-placeholder');
-                if (TRANSLATIONS[lang][key]) {
-                    el.placeholder = TRANSLATIONS[lang][key];
-                }
+                if (TRANSLATIONS[lang][key]) el.placeholder = TRANSLATIONS[lang][key];
             });
 
-            // Dynamic states
             checkAppState();
         }
 
@@ -558,7 +632,6 @@
             const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
             const entry = document.createElement('div');
             entry.className = `log-entry ${type === 'warn' ? 'log-warn' : type === 'error' ? 'log-error' : ''}`;
-            
             const trans = TRANSLATIONS[currentLang][msgKey] || msgKey;
             entry.innerHTML = `<span class="log-time">${time}</span> ${trans}${extra}`;
             consoleLog.prepend(entry);
@@ -578,6 +651,41 @@
             }
         }
 
+        async function fetchProfile(pubkey) {
+            if (PROFILES[pubkey] && PROFILES[pubkey].loading !== false) return;
+            
+            log('log_profile_init', pubkey.substring(0, 8));
+            PROFILES[pubkey] = { name: null, picture: null, loading: true };
+
+            try {
+                const sub = currentRelay.subscribe([{ kinds: [0], authors: [pubkey], limit: 1 }]);
+                sub.onevent((event) => {
+                    try {
+                        const data = JSON.parse(event.content);
+                        PROFILES[pubkey] = {
+                            name: data.display_name || data.name || data.username,
+                            picture: data.picture,
+                            loading: false
+                        };
+                        log('log_profile_ok', PROFILES[pubkey].name);
+                        
+                        // Reactively update cards on the DOM
+                        document.querySelectorAll(`[data-author="${pubkey}"]`).forEach(card => {
+                            if (PROFILES[pubkey].name) card.querySelector('.event-name').textContent = PROFILES[pubkey].name;
+                            if (PROFILES[pubkey].picture) card.querySelector('.event-avatar').innerHTML = `<img src="${PROFILES[pubkey].picture}" alt="">`;
+                        });
+                    } catch (e) { 
+                        console.error('Parsing metadata error', e); 
+                        PROFILES[pubkey].loading = false;
+                    }
+                    sub.close();
+                });
+            } catch (err) { 
+                console.error('Fetch profile failed', err);
+                PROFILES[pubkey].loading = false;
+            }
+        }
+
         function escapeHTML(str) {
             const div = document.createElement('div');
             div.textContent = str;
@@ -592,15 +700,42 @@
             const npub = nip19.npubEncode(event.pubkey);
             const shortNpub = `${npub.substring(0, 8)}...${npub.substring(npub.length - 4)}`;
             
+            // Build profile info from cache if available
+            const profile = PROFILES[event.pubkey] || { name: null, picture: null };
+            
             const card = document.createElement('div');
             card.className = 'event-card';
+            card.setAttribute('data-author', event.pubkey);
             card.innerHTML = `
-                <div class="event-meta">
-                    <span class="event-npub" title="${npub}">${shortNpub}</span>
-                    <span class="event-time">${formatTime(event.created_at)}</span>
+                <div class="event-header">
+                    <div class="event-avatar">
+                        ${profile.picture ? `<img src="${profile.picture}" alt="">` : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`}
+                    </div>
+                    <div class="event-info">
+                        <span class="event-name">${profile.name || 'ANONYMOUS'}</span>
+                        <div class="event-meta">
+                            <span class="event-npub" title="${npub}">${shortNpub}</span>
+                            <span class="event-time">${formatTime(event.created_at)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="event-actions">
+                    <button class="btn-inspect">[JSON]</button>
                 </div>
                 <div class="event-content">${escapeHTML(event.content)}</div>
+                <div class="inspector-panel">${JSON.stringify(event, null, 4)}</div>
             `;
+
+            // Logic for the Inspector
+            const btnInspect = card.querySelector('.btn-inspect');
+            const inspector = card.querySelector('.inspector-panel');
+            btnInspect.addEventListener('click', () => {
+                inspector.classList.toggle('visible');
+            });
+
+            // Trigger profile fetch if not cached or already loading
+            if (!profile.name) fetchProfile(event.pubkey);
+
             return card;
         }
 
@@ -684,6 +819,8 @@
                 loginBtn.classList.add('hidden');
                 log('log_auth_success', npub);
                 checkAppState();
+                // Profile for user
+                fetchProfile(userPubKey);
             } catch (error) {
                 log('log_error', error.message, 'error');
             }
@@ -729,11 +866,7 @@
             }
         });
 
-        // Initialize with Spanish by default as requested by the user
         setLanguage('es');
-
-
     </script>
 </body>
 </html>
-
