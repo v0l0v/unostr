@@ -49,7 +49,6 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Jakob Nielsen: Consistent Layout */
         header {
             border-bottom: 1px solid var(--border-dim);
             padding: 1rem 2rem;
@@ -78,7 +77,6 @@
 
         .brand span { color: var(--text-primary); }
 
-        /* Language Toggle Stylings */
         .lang-selector {
             display: flex;
             gap: 2px;
@@ -123,11 +121,10 @@
             gap: var(--gap);
         }
 
-        /* Components: Technical Styling */
         .card {
             background: var(--bg-surface);
             border: 1px solid var(--border-dim);
-            border-radius: 4px; /* Cypherpunk sharp edges */
+            border-radius: 4px;
             padding: 1.5rem;
             transition: var(--transition);
         }
@@ -152,7 +149,6 @@
             background: var(--accent-cyan);
         }
 
-        /* Inputs & Buttons: Nielsen's Efficiency & Standards */
         .input-wrapper {
             display: flex;
             flex-direction: column;
@@ -235,7 +231,6 @@
             box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
         }
 
-        /* Visibility of Status: Relay Tabs */
         .tabs {
             display: flex;
             border-bottom: 1px solid var(--border-dim);
@@ -260,7 +255,6 @@
             border-bottom-color: var(--accent-cyan);
         }
 
-        /* Nielsen Heuristic #1: System Console */
         footer {
             height: 200px;
             background: #050608;
@@ -298,7 +292,6 @@
         .log-warn { color: var(--accent-amber); }
         .log-error { color: var(--accent-red); }
 
-        /* Feed: Information Density & Identity */
         .event-card {
             border-top: 1px solid var(--border-dim);
             padding: 1.5rem 0;
@@ -325,6 +318,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            border-radius: 4px;
         }
 
         .event-avatar img {
@@ -358,10 +352,9 @@
             color: var(--text-primary);
             white-space: pre-wrap;
             word-break: break-word;
-            padding-left: 50px; /* Aligned with content below avatar */
+            padding-left: 50px;
         }
 
-        /* Inspector Toggle / Technical usability */
         .event-actions {
             position: absolute;
             top: 1.5rem;
@@ -397,12 +390,10 @@
             display: none;
             white-space: pre;
             max-height: 400px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
         .inspector-panel.visible { display: block; }
 
-        /* Status Badges */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -418,7 +409,6 @@
         .status-online { color: var(--accent-green); border-color: rgba(0, 255, 65, 0.2); background: rgba(0, 255, 65, 0.05); }
         .status-offline { color: var(--accent-red); border-color: rgba(255, 62, 62, 0.2); background: rgba(255, 62, 62, 0.05); }
 
-        /* Media Queries */
         @media (max-width: 600px) {
             header { padding: 1rem; }
             .brand-container { gap: 0.5rem; flex-direction: column; align-items: flex-start; }
@@ -429,6 +419,7 @@
 
         .hidden { display: none !important; }
         .amber { color: var(--accent-amber); }
+        .dim { color: var(--text-dim); }
     </style>
 </head>
 <body>
@@ -448,7 +439,6 @@
     </header>
 
     <main>
-        <!-- Relay Config / Jakob Nielsen Heuristic #5 User Control & Freedom -->
         <section class="card">
             <div class="section-title" data-i18n="section_conn">Configuración de Conexión</div>
             <div class="tabs">
@@ -467,7 +457,6 @@
             </div>
         </section>
 
-        <!-- Broadcast Section / Nielsen Efficiency -->
         <section id="post-area" class="card hidden">
             <div class="section-title" data-i18n="section_broadcast">Transmitir Datos</div>
             <div class="input-wrapper">
@@ -476,14 +465,12 @@
             <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Firmar y Transmitir</button>
         </section>
 
-        <!-- Recent Data Stream -->
         <section id="feed-container" class="card hidden">
             <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
             <div id="feed-list"></div>
         </section>
     </main>
 
-    <!-- Nielsen System Visibility Console -->
     <footer>
         <div class="console-header">
             <span data-i18n="console_title">Consola del Sistema // Eventos Nostr</span>
@@ -597,7 +584,6 @@
         let currentSub = null;
         let currentLang = 'es';
 
-        // Identity Cache
         const PROFILES = {}; 
 
         const DEFAULTS = {
@@ -605,7 +591,6 @@
             private: 'ws://34tam2wfzzz7b5ai2oyuzhyozgjzvo4rrw3mzk4odjcspnkprtspqsqd.onion'
         };
 
-        // UI Helpers
         function setLanguage(lang) {
             currentLang = lang;
             document.documentElement.lang = lang;
@@ -658,27 +643,36 @@
             PROFILES[pubkey] = { name: null, picture: null, loading: true };
 
             try {
-                const sub = currentRelay.subscribe([{ kinds: [0], authors: [pubkey], limit: 1 }]);
-                sub.onevent((event) => {
-                    try {
-                        const data = JSON.parse(event.content);
-                        PROFILES[pubkey] = {
-                            name: data.display_name || data.name || data.username,
-                            picture: data.picture,
-                            loading: false
-                        };
-                        log('log_profile_ok', PROFILES[pubkey].name);
-                        
-                        // Reactively update cards on the DOM
-                        document.querySelectorAll(`[data-author="${pubkey}"]`).forEach(card => {
-                            if (PROFILES[pubkey].name) card.querySelector('.event-name').textContent = PROFILES[pubkey].name;
-                            if (PROFILES[pubkey].picture) card.querySelector('.event-avatar').innerHTML = `<img src="${PROFILES[pubkey].picture}" alt="">`;
-                        });
-                    } catch (e) { 
-                        console.error('Parsing metadata error', e); 
-                        PROFILES[pubkey].loading = false;
+                // BUG FIX: passing callbacks inside the subscribe method (nostr-tools v2 style)
+                const sub = currentRelay.subscribe([
+                    { kinds: [0], authors: [pubkey], limit: 1 }
+                ], {
+                    onevent(event) {
+                        try {
+                            const data = JSON.parse(event.content);
+                            PROFILES[pubkey] = {
+                                name: data.display_name || data.name || data.username,
+                                picture: data.picture,
+                                loading: false
+                            };
+                            log('log_profile_ok', PROFILES[pubkey].name);
+                            
+                            document.querySelectorAll(`[data-author="${pubkey}"]`).forEach(card => {
+                                if (PROFILES[pubkey].name) card.querySelector('.event-name').textContent = PROFILES[pubkey].name;
+                                if (PROFILES[pubkey].picture) {
+                                    const avatarDiv = card.querySelector('.event-avatar');
+                                    avatarDiv.innerHTML = `<img src="${PROFILES[pubkey].picture}" alt="">`;
+                                }
+                            });
+                        } catch (e) { 
+                            console.error('Parsing metadata error', e); 
+                            PROFILES[pubkey].loading = false;
+                        }
+                        sub.close();
+                    },
+                    oneose() {
+                        sub.close();
                     }
-                    sub.close();
                 });
             } catch (err) { 
                 console.error('Fetch profile failed', err);
@@ -700,8 +694,8 @@
             const npub = nip19.npubEncode(event.pubkey);
             const shortNpub = `${npub.substring(0, 8)}...${npub.substring(npub.length - 4)}`;
             
-            // Build profile info from cache if available
             const profile = PROFILES[event.pubkey] || { name: null, picture: null };
+            const displayName = profile.name || shortNpub; // Use npub as name fallback
             
             const card = document.createElement('div');
             card.className = 'event-card';
@@ -709,12 +703,12 @@
             card.innerHTML = `
                 <div class="event-header">
                     <div class="event-avatar">
-                        ${profile.picture ? `<img src="${profile.picture}" alt="">` : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`}
+                        ${profile.picture ? `<img src="${profile.picture}" alt="">` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dim"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`}
                     </div>
                     <div class="event-info">
-                        <span class="event-name">${profile.name || 'ANONYMOUS'}</span>
+                        <span class="event-name">${displayName}</span>
                         <div class="event-meta">
-                            <span class="event-npub" title="${npub}">${shortNpub}</span>
+                            <span class="event-npub dim" title="${npub}">${shortNpub}</span>
                             <span class="event-time">${formatTime(event.created_at)}</span>
                         </div>
                     </div>
@@ -726,14 +720,12 @@
                 <div class="inspector-panel">${JSON.stringify(event, null, 4)}</div>
             `;
 
-            // Logic for the Inspector
             const btnInspect = card.querySelector('.btn-inspect');
             const inspector = card.querySelector('.inspector-panel');
             btnInspect.addEventListener('click', () => {
                 inspector.classList.toggle('visible');
             });
 
-            // Trigger profile fetch if not cached or already loading
             if (!profile.name) fetchProfile(event.pubkey);
 
             return card;
@@ -759,7 +751,6 @@
             });
         }
 
-        // Event Listeners
         btnPublic.addEventListener('click', () => {
             btnPublic.classList.add('active');
             btnPrivate.classList.remove('active');
@@ -819,7 +810,6 @@
                 loginBtn.classList.add('hidden');
                 log('log_auth_success', npub);
                 checkAppState();
-                // Profile for user
                 fetchProfile(userPubKey);
             } catch (error) {
                 log('log_error', error.message, 'error');
