@@ -15,6 +15,8 @@
             --color-text-primary: #1E3A5F;
             --glass-border: rgba(255, 255, 255, 0.6);
             --glass-shadow: rgba(30, 58, 95, 0.08);
+            --input-bg: #FFFFFF;
+            --tab-active-bg: #FFFFFF;
             
             --error: #ef4444;
             --success: #10b981;
@@ -30,6 +32,8 @@
             --color-text-primary: #F1FAFF;
             --glass-border: rgba(255, 255, 255, 0.1);
             --glass-shadow: rgba(0, 0, 0, 0.4);
+            --input-bg: rgba(15, 23, 42, 0.6);
+            --tab-active-bg: var(--color-primary);
         }
 
         body {
@@ -163,7 +167,7 @@
             font-size: 0.875rem;
         }
         .tab-btn.active {
-            background: white;
+            background: var(--tab-active-bg);
             color: var(--color-text-primary);
             box-shadow: 0 4px 6px -1px rgba(30, 58, 95, 0.1);
         }
@@ -181,7 +185,7 @@
         input {
             width: 100%;
             padding: 0.85rem 1rem;
-            background: white;
+            background: var(--input-bg);
             border: 1px solid rgba(30, 58, 95, 0.1);
             border-radius: 14px;
             color: var(--color-text-primary);
@@ -245,7 +249,7 @@
         textarea {
             width: 100%;
             min-height: 120px;
-            background: white;
+            background: var(--input-bg);
             border: 1px solid rgba(30, 58, 95, 0.1);
             border-radius: 18px;
             color: var(--color-text-primary);
