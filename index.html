@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Unostr - Una aplicación minimalista de Nostr">
-    <title>Unostr</title>
+    <title>Unostr - Relay Connect</title>
     <style>
         :root {
             --bg: #0f172a;
             --fg: #f8fafc;
             --accent: #8b5cf6;
             --accent-hover: #7c3aed;
+            --error: #ef4444;
+            --success: #10b981;
+            --glass: rgba(30, 41, 59, 0.7);
         }
         body {
             background-color: var(--bg);
@@ -19,55 +22,226 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            overflow: hidden;
+            background: radial-gradient(circle at top right, #1e1b4b, var(--bg));
         }
         .container {
             text-align: center;
-            animation: fadeIn 1s ease-out;
+            animation: fadeIn 0.8s ease-out;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            padding: 3rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            width: 90%;
         }
         h1 {
-            font-size: 4rem;
-            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
             background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 800;
         }
-        p {
-            font-size: 1.25rem;
+        .input-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
             color: #94a3b8;
-            margin-bottom: 2rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        input:focus {
+            border-color: var(--accent);
         }
         .btn {
+            width: 100%;
             padding: 0.75rem 2rem;
             background-color: var(--accent);
             color: white;
             border: none;
-            border-radius: 9999px;
+            border-radius: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-decoration: none;
             box-shadow: 0 4px 14px 0 rgba(139, 92, 246, 0.39);
         }
         .btn:hover {
             background-color: var(--accent-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.23);
+            transform: translateY(-1px);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            display: none;
+            animation: slideUp 0.3s ease-out;
+        }
+        .status-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            display: block !important;
+        }
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            display: block !important;
+        }
+        .relay-selector {
+            display: flex;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 0.6rem;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+        .tab-btn.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+        }
+        .note {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #64748b;
+            display: none;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Hola Nostr</h1>
-        <p>Unostr está cobrando vida.</p>
-        <a href="#" class="btn" id="start-btn">Comenzar</a>
+        <h1>Unostr</h1>
+        
+        <div class="relay-selector">
+            <button id="btn-public" class="tab-btn active">Público</button>
+            <button id="btn-private" class="tab-btn">Privado (Tor)</button>
+        </div>
+
+        <div class="input-group">
+            <label for="relay-url" id="relay-label">Relay Público</label>
+            <input type="text" id="relay-url" placeholder="wss://..." value="wss://relay.damus.io">
+            <p id="tor-note" class="note">Este relay requiere Tor Browser o un proxy configurado.</p>
+        </div>
+
+        <button id="connect-btn" class="btn">Conectar</button>
+        <div id="status"></div>
     </div>
+
+    <script type="module">
+        import { Relay } from 'https://esm.sh/nostr-tools@2.20.0';
+
+        const relayInput = document.getElementById('relay-url');
+        const relayLabel = document.getElementById('relay-label');
+        const connectBtn = document.getElementById('connect-btn');
+        const statusDiv = document.getElementById('status');
+        const torNote = document.getElementById('tor-note');
+        
+        const btnPublic = document.getElementById('btn-public');
+        const btnPrivate = document.getElementById('btn-private');
+
+        const DEFAULTS = {
+            public: 'wss://relay.damus.io',
+            private: 'ws://34tam2wfzzz7b5ai2oyuzhyozgjzvo4rrw3mzk4odjcspnkprtspqsqd.onion'
+        };
+
+        // Switch to Public
+        btnPublic.addEventListener('click', () => {
+            btnPublic.classList.add('active');
+            btnPrivate.classList.remove('active');
+            relayInput.value = DEFAULTS.public;
+            relayLabel.textContent = 'Relay Público';
+            torNote.style.display = 'none';
+        });
+
+        // Switch to Private
+        btnPrivate.addEventListener('click', () => {
+            btnPrivate.classList.add('active');
+            btnPublic.classList.remove('active');
+            relayInput.value = DEFAULTS.private;
+            relayLabel.textContent = 'Relay Privado (.onion)';
+            torNote.style.display = 'block';
+        });
+
+        function setStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = type === 'success' ? 'status-success' : 'status-error';
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            const url = relayInput.value.trim();
+            if (!url) {
+                setStatus('Por favor, ingresa una URL válida.', 'error');
+                return;
+            }
+
+            connectBtn.disabled = true;
+            connectBtn.textContent = 'Conectando...';
+            statusDiv.style.display = 'none';
+
+            try {
+                const relay = await Relay.connect(url);
+                setStatus(`Conectado a ${relay.url}`, 'success');
+                
+                relay.onclose = () => {
+                    setStatus(`Conexión cerrada con ${url}`, 'error');
+                };
+
+            } catch (error) {
+                console.error(error);
+                setStatus(`Error al conectar a ${url}: ${error.message || 'Error de conexión'}`, 'error');
+            } finally {
+                connectBtn.disabled = false;
+                connectBtn.textContent = 'Conectar';
+            }
+        });
+    </script>
+
 </body>
 </html>
+
