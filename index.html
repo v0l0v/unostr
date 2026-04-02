@@ -1,404 +1,391 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Unostr - Una aplicación minimalista de Nostr">
-    <title>Unostr - Relay Connect</title>
+    <meta name="description" content="Unostr - Cliente Nostr Técnico y Privado">
+    <title>Unostr // [Technical UI]</title>
+    <!-- Google Fonts for Mono Aesthetics -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Light Theme (Default Dusty Blue) */
-            --color-bg: #F1FAFF;
-            --color-surface: rgba(212, 239, 253, 0.6);
-            --color-primary: #79C7F7;
-            --color-text-secondary: #3D6A8C;
-            --color-text-primary: #1E3A5F;
-            --glass-border: rgba(255, 255, 255, 0.6);
-            --glass-shadow: rgba(30, 58, 95, 0.08);
-            --input-bg: #FFFFFF;
-            --tab-active-bg: #FFFFFF;
+            /* Cypherpunk / Technical Color Palette */
+            --bg-base: #0a0b0d;
+            --bg-surface: #12141a;
+            --bg-hover: #1c1f26;
             
-            --error: #ef4444;
-            --success: #10b981;
-            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            --border-dim: #2d3139;
+            --border-bright: #3f444e;
+            
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-dim: #475569;
+            
+            --accent-cyan: #00f2ff;
+            --accent-amber: #ffb000;
+            --accent-green: #00ff41; /* Terminal classic */
+            --accent-red: #ff3e3e;
+            
+            --font-main: 'JetBrains Mono', 'Roboto Mono', 'SF Mono', 'Menlo', monospace;
+            --font-size-base: 14px;
+            --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            --gap: 1.5rem;
         }
 
-        [data-theme="dark"] {
-            /* Dark Theme (Deep Space Dusty Blue) */
-            --color-bg: #0A1120;
-            --color-surface: rgba(30, 58, 95, 0.4);
-            --color-primary: #79C7F7;
-            --color-text-secondary: #94A3B8;
-            --color-text-primary: #F1FAFF;
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --glass-shadow: rgba(0, 0, 0, 0.4);
-            --input-bg: rgba(15, 23, 42, 0.6);
-            --tab-active-bg: var(--color-primary);
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background-color: var(--color-bg);
-            color: var(--color-text-primary);
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            font-size: var(--font-size-base);
+            line-height: 1.5;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
             min-height: 100vh;
-            margin: 0;
-            transition: var(--transition);
-            background-image: 
-                radial-gradient(at 0% 0%, hsla(203,100%,90%,0.15) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, hsla(202,100%,85%,0.1) 0, transparent 50%);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
-        [data-theme="dark"] body {
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(121, 199, 247, 0.05) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, rgba(30, 58, 95, 0.2) 0, transparent 50%);
-        }
-        .container {
-            position: relative;
-            text-align: center;
-            animation: fadeIn 0.8s ease-out;
-            background: var(--color-surface);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            padding: 3.5rem 3rem;
-            border-radius: 40px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 
-                0 25px 50px -12px var(--glass-shadow),
-                inset 0 1px 1px var(--glass-border);
-            max-width: 500px;
-            width: 90%;
-            transition: var(--transition);
-        }
-
-        /* Theme Toggle styles */
-        .theme-toggle {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            background: rgba(30, 58, 95, 0.05);
-            border: 1px solid var(--glass-border);
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: var(--transition);
-            color: var(--color-text-secondary);
-        }
-
-        .theme-toggle:hover {
-            background: var(--color-primary);
-            color: white;
-            transform: rotate(15deg);
-        }
-
-        .theme-toggle svg {
-            width: 20px;
-            height: 20px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2.5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
-            color: var(--color-text-primary);
-            font-weight: 800;
-            letter-spacing: -0.025em;
-        }
-        .login-area {
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .btn-login {
-            background-color: var(--color-surface);
-            color: var(--color-text-secondary);
-            border: 1px solid rgba(61, 106, 140, 0.1);
-            padding: 0.5rem 1.25rem;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn-login:hover {
-            background-color: var(--color-primary);
-            color: white;
-            transform: translateY(-1px);
-        }
-        .profile-badge {
-            display: none;
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-            padding: 0.5rem 1rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-family: monospace;
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-        .relay-selector {
-            display: flex;
-            background: rgba(30, 58, 95, 0.05);
-            padding: 6px;
-            border-radius: 16px;
-            margin-bottom: 2rem;
-            border: 1px solid rgba(30, 58, 95, 0.05);
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 0.7rem;
-            border: none;
-            background: transparent;
-            color: var(--color-text-secondary);
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 10px;
-            transition: all 0.2s;
-            font-size: 0.875rem;
-        }
-        .tab-btn.active {
-            background: var(--tab-active-bg);
-            color: var(--color-text-primary);
-            box-shadow: 0 4px 6px -1px rgba(30, 58, 95, 0.1);
-        }
-        .input-group {
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--color-text-secondary);
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        input {
-            width: 100%;
-            padding: 0.85rem 1rem;
-            background: var(--input-bg);
-            border: 1px solid rgba(30, 58, 95, 0.1);
-            border-radius: 14px;
-            color: var(--color-text-primary);
-            font-size: 1rem;
-            outline: none;
-            transition: all 0.3s;
-            box-sizing: border-box;
-        }
-        input:focus {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 4px rgba(121, 199, 247, 0.15);
-        }
-        .btn {
-            width: 100%;
-            padding: 0.85rem 2rem;
-            background-color: var(--color-primary);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(121, 199, 247, 0.3);
-        }
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(121, 199, 247, 0.4);
-        }
-        .btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 1.5rem;
-            padding: 1rem;
-            border-radius: 14px;
-            font-size: 0.875rem;
-            display: none;
-            animation: slideUp 0.3s ease-out;
-            font-weight: 500;
-        }
-        .status-success {
-            background: rgba(16, 185, 129, 0.08);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.1);
-            display: block !important;
-        }
-        .status-error {
-            background: rgba(239, 68, 68, 0.08);
-            color: var(--error);
-            border: 1px solid rgba(239, 68, 68, 0.1);
-            display: block !important;
-        }
-        .post-area {
-            display: none;
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px dashed rgba(30, 58, 95, 0.1);
-            animation: slideUp 0.5s ease-out;
-            margin-bottom: 2rem;
-        }
-        
-        /* Feed Styles */
-        .feed-container {
-            display: none;
-            text-align: left;
-            margin-top: 2rem;
-            animation: slideUp 0.6s ease-out;
-        }
-        .feed-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            color: var(--color-text-primary);
-            padding-left: 0.5rem;
-        }
-        .event-card {
-            background: var(--color-surface);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            transition: var(--transition);
-            animation: fadeIn 0.4s ease-out;
-        }
-        .event-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px var(--glass-shadow);
-        }
-        .event-header {
+        /* Jakob Nielsen: Consistent Layout */
+        header {
+            border-bottom: 1px solid var(--border-dim);
+            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
-            font-size: 0.75rem;
+            background: var(--bg-surface);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .event-author {
-            font-family: monospace;
-            color: var(--color-primary);
+
+        .brand {
+            font-weight: 800;
+            font-size: 1.25rem;
+            letter-spacing: -1px;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+        }
+
+        .brand span { color: var(--text-primary); }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        main {
+            flex: 1;
+            max-width: 800px;
+            width: 95%;
+            margin: 0 auto;
+            padding: var(--gap);
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap);
+        }
+
+        /* Components: Technical Styling */
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-dim);
+            border-radius: 4px; /* Cypherpunk sharp edges */
+            padding: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .card:hover { border-color: var(--border-bright); }
+
+        .section-title {
+            font-size: 0.875rem;
             font-weight: 700;
-            background: rgba(121, 199, 247, 0.1);
-            padding: 2px 8px;
-            border-radius: 6px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .event-time {
-            color: var(--color-text-secondary);
-            font-weight: 500;
+
+        .section-title::before {
+            content: "";
+            width: 4px;
+            height: 4px;
+            background: var(--accent-cyan);
         }
+
+        /* Inputs & Buttons: Nielsen's Efficiency & Standards */
+        .input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+
+        input, textarea {
+            width: 100%;
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            padding: 0.75rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 1px var(--accent-cyan);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            cursor: pointer;
+            border: 1px solid var(--border-bright);
+            background: var(--bg-surface);
+            padding: 0.6rem 1.25rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-width: 120px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--bg-hover);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .btn:active:not(:disabled) {
+            background: var(--bg-base);
+            transform: translateY(1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .btn.primary {
+            background: var(--accent-cyan);
+            color: var(--bg-base);
+            border-color: var(--accent-cyan);
+        }
+
+        .btn.primary:hover:not(:disabled) {
+            background: white;
+            color: var(--bg-base);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+        }
+
+        /* Visibility of Status: Relay Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-dim);
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+        }
+
+        /* Nielsen Heuristic #1: System Console */
+        footer {
+            height: 200px;
+            background: #050608;
+            border-top: 1px solid var(--accent-cyan);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .console-header {
+            padding: 0.5rem 1rem;
+            background: var(--bg-surface);
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-cyan);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        #console-log {
+            flex: 1;
+            padding: 0.75rem;
+            overflow-y: auto;
+            font-size: 0.7rem;
+            color: var(--accent-green);
+            background: #000;
+        }
+
+        .log-entry { margin-bottom: 0.25rem; }
+        .log-time { color: var(--text-dim); margin-right: 0.5rem; }
+        .log-warn { color: var(--accent-amber); }
+        .log-error { color: var(--accent-red); }
+
+        /* Feed: Information Density */
+        .event-card {
+            border-left: 2px solid var(--border-dim);
+            padding-left: 1rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .event-card:hover { border-left-color: var(--accent-cyan); }
+
+        .event-meta {
+            font-size: 0.7rem;
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-dim);
+        }
+
+        .event-npub { color: var(--accent-cyan); font-weight: 700; }
+
         .event-content {
-            font-size: 0.9375rem;
-            line-height: 1.5;
-            color: var(--color-text-primary);
+            font-size: 0.9rem;
+            color: var(--text-primary);
             white-space: pre-wrap;
             word-break: break-word;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 99px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            border: 1px solid var(--border-dim);
         }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        .status-online { color: var(--accent-green); border-color: rgba(0, 255, 65, 0.2); background: rgba(0, 255, 65, 0.05); }
+        .status-offline { color: var(--accent-red); border-color: rgba(255, 62, 62, 0.2); background: rgba(255, 62, 62, 0.05); }
+
+        /* Media Queries for Responsive Design */
+        @media (max-width: 600px) {
+            header { padding: 1rem; }
+            main { padding: 1rem; }
+            .btn-group { flex-direction: column; }
+            .btn { width: 100%; }
         }
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            background: var(--input-bg);
-            border: 1px solid rgba(30, 58, 95, 0.1);
-            border-radius: 18px;
-            color: var(--color-text-primary);
-            padding: 1rem;
-            font-size: 1rem;
-            font-family: inherit;
-            resize: vertical;
-            outline: none;
-            box-sizing: border-box;
-            margin-bottom: 1rem;
-            transition: all 0.3s;
-        }
-        textarea:focus {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 4px rgba(121, 199, 247, 0.15);
-        }
-        .note {
-            margin-top: 0.5rem;
-            font-size: 0.75rem;
-            color: var(--color-text-secondary);
-            display: none;
-            font-weight: 500;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+
+        /* Utilities */
+        .hidden { display: none !important; }
+        .amber { color: var(--accent-amber); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <button id="theme-toggle" class="theme-toggle" aria-label="Cambiar tema">
-            <!-- Icono Luna (para pasar a oscuro) -->
-            <svg id="theme-icon-dark" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-            <!-- Icono Sol (para pasar a claro) -->
-            <svg id="theme-icon-light" style="display:none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-        </button>
-
-        <div class="login-area">
-            <button id="login-btn" class="btn-login">Login con NIP-07</button>
-            <div id="profile-badge" class="profile-badge"></div>
+    <header>
+        <div class="brand">UNOSTR //<span>CLIENT</span></div>
+        <div class="header-actions">
+            <div id="ws-status" class="status-badge status-offline">NOT_CONNECTED</div>
+            <button id="login-btn" class="btn">Login (NIP-07)</button>
+            <div id="profile-badge" class="hidden status-badge status-online"></div>
         </div>
+    </header>
 
-        <h1>Unostr</h1>
-        
-        <div class="relay-selector">
-            <button id="btn-public" class="tab-btn active">Público</button>
-            <button id="btn-private" class="tab-btn">Privado (Requiere navegador Tor)</button>
-        </div>
+    <main>
+        <!-- Relay Config / Jakob Nielsen Heuristic #5 User Control & Freedom -->
+        <section class="card">
+            <div class="section-title">Connectivity Config</div>
+            <div class="tabs">
+                <button id="btn-public" class="tab active">Public_Network</button>
+                <button id="btn-private" class="tab">Tor_Encrypted</button>
+            </div>
+            
+            <div class="input-wrapper">
+                <label for="relay-url">RELAY_URI</label>
+                <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
+                <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;">[WARNING] Onion address requires Tor Network browser.</p>
+            </div>
 
-        <div class="input-group">
-            <label for="relay-url" id="relay-label">Relay Público</label>
-            <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
-            <p id="tor-note" class="note">Este relay requiere Tor Browser o un proxy configurado.</p>
-        </div>
+            <div class="btn-group">
+                <button id="connect-btn" class="btn primary">Establish_Connection</button>
+            </div>
+        </section>
 
-        <button id="connect-btn" class="btn">Conectar</button>
-        <div id="status"></div>
+        <!-- Broadcast Section / Nielsen Efficiency -->
+        <section id="post-area" class="card hidden">
+            <div class="section-title">Broadcast Data</div>
+            <div class="input-wrapper">
+                <textarea id="post-content" placeholder="// Write message for the void..."></textarea>
+            </div>
+            <button id="publish-btn" class="btn primary">Sign & Broadcast</button>
+        </section>
 
-        <div id="post-area" class="post-area">
-            <textarea id="post-content" placeholder="¿Qué está pasando en Nostr?"></textarea>
-            <button id="publish-btn" class="btn btn-publish">Publicar</button>
-        </div>
-
-        <div id="feed-container" class="feed-container">
-            <h2 class="feed-title">Feed Reciente</h2>
+        <!-- Recent Data Stream -->
+        <section id="feed-container" class="card hidden">
+            <div class="section-title">Data Stream [Kind 1]</div>
             <div id="feed-list"></div>
+        </section>
+    </main>
+
+    <!-- Nielsen System Visibility Console -->
+    <footer>
+        <div class="console-header">
+            <span>System Console // Nostr Events</span>
+            <span id="console-status">READY</span>
         </div>
-    </div>
+        <div id="console-log">
+            <div class="log-entry"><span class="log-time">00:00:00</span> <span class="log-warn">[SYS] Dashboard initialized. Awaiting user interaction.</span></div>
+        </div>
+    </footer>
 
     <script type="module">
         import { Relay, nip19 } from 'https://esm.sh/nostr-tools@2.20.0';
 
         const loginBtn = document.getElementById('login-btn');
         const profileBadge = document.getElementById('profile-badge');
+        const wsStatus = document.getElementById('ws-status');
 
         const relayInput = document.getElementById('relay-url');
-        const relayLabel = document.getElementById('relay-label');
         const connectBtn = document.getElementById('connect-btn');
-        const statusDiv = document.getElementById('status');
         const torNote = document.getElementById('tor-note');
 
         const postArea = document.getElementById('post-area');
@@ -411,6 +398,9 @@
         const btnPublic = document.getElementById('btn-public');
         const btnPrivate = document.getElementById('btn-private');
 
+        const consoleLog = document.getElementById('console-log');
+        const consoleStatus = document.getElementById('console-status');
+
         let currentRelay = null;
         let userPubKey = null;
         let currentSub = null;
@@ -420,13 +410,33 @@
             private: 'ws://34tam2wfzzz7b5ai2oyuzhyozgjzvo4rrw3mzk4odjcspnkprtspqsqd.onion'
         };
 
+        // UI Helpers
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type === 'warn' ? 'log-warn' : type === 'error' ? 'log-error' : ''}`;
+            entry.innerHTML = `<span class="log-time">${time}</span> ${msg}`;
+            consoleLog.prepend(entry);
+        }
+
         function checkAppState() {
-            if (currentRelay && userPubKey) {
-                postArea.style.display = 'block';
-            }
             if (currentRelay) {
-                feedContainer.style.display = 'block';
+                feedContainer.classList.remove('hidden');
+                wsStatus.className = 'status-badge status-online';
+                wsStatus.textContent = `CONNECTED // ${currentRelay.url.split('://')[1]}`;
+            } else {
+                wsStatus.className = 'status-badge status-offline';
+                wsStatus.textContent = 'NOT_CONNECTED';
             }
+            if (currentRelay && userPubKey) {
+                postArea.classList.remove('hidden');
+            }
+        }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
 
         function formatTime(timestamp) {
@@ -440,8 +450,8 @@
             const card = document.createElement('div');
             card.className = 'event-card';
             card.innerHTML = `
-                <div class="event-header">
-                    <span class="event-author" title="${npub}">${shortNpub}</span>
+                <div class="event-meta">
+                    <span class="event-npub" title="${npub}">${shortNpub}</span>
                     <span class="event-time">${formatTime(event.created_at)}</span>
                 </div>
                 <div class="event-content">${escapeHTML(event.content)}</div>
@@ -449,138 +459,100 @@
             return card;
         }
 
-        function escapeHTML(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
-            
-            feedList.innerHTML = ''; // Limpiar feed anterior
+            feedList.innerHTML = '';
+            log(`Starting subscription kind:1 for ${relay.url}`);
 
             currentSub = relay.subscribe([
-                {
-                    kinds: [1],
-                    limit: 20
-                }
+                { kinds: [1], limit: 20 }
             ], {
                 onevent(event) {
                     const card = createEventCard(event);
                     feedList.prepend(card);
-                    
-                    // Mantener solo los últimos 50 mensajes en el DOM
-                    if (feedList.childElementCount > 50) {
-                        feedList.removeChild(feedList.lastChild);
-                    }
+                    if (feedList.childElementCount > 30) feedList.removeChild(feedList.lastChild);
                 },
                 oneose() {
-                    console.log('Eose: historical events loaded');
+                    log(`Historical data loaded from ${relay.url}`);
+                    consoleStatus.textContent = 'STREAM_ACTIVE';
                 }
             });
         }
 
-        // Switch to Public
+        // Event Listeners
         btnPublic.addEventListener('click', () => {
             btnPublic.classList.add('active');
             btnPrivate.classList.remove('active');
             relayInput.value = DEFAULTS.public;
-            relayLabel.textContent = 'Relay Público';
-            torNote.style.display = 'none';
+            torNote.classList.add('hidden');
         });
 
-        // Switch to Private
         btnPrivate.addEventListener('click', () => {
             btnPrivate.classList.add('active');
             btnPublic.classList.remove('active');
             relayInput.value = DEFAULTS.private;
-            relayLabel.textContent = 'Relay Privado (.onion)';
-            torNote.style.display = 'block';
+            torNote.classList.remove('hidden');
         });
-
-        function setStatus(message, type) {
-            statusDiv.textContent = message;
-            statusDiv.className = type === 'success' ? 'status-success' : 'status-error';
-        }
 
         connectBtn.addEventListener('click', async () => {
             const url = relayInput.value.trim();
-            if (!url) {
-                setStatus('Por favor, ingresa una URL válida.', 'error');
-                return;
-            }
+            if (!url) return log('Error: Invalid Relay URI', 'error');
 
             connectBtn.disabled = true;
-            connectBtn.textContent = 'Conectando...';
-            statusDiv.style.display = 'none';
+            connectBtn.textContent = 'ESTABLISHING...';
+            log(`Attempting connection to: ${url}`);
 
             try {
                 if (currentRelay) await currentRelay.close();
-                
                 currentRelay = await Relay.connect(url);
-                setStatus(`Conectado a ${currentRelay.url}`, 'success');
+                log(`Successfully connected to ${currentRelay.url}`);
                 
                 currentRelay.onclose = () => {
-                    setStatus(`Conexión cerrada con ${url}`, 'error');
+                    log(`Disconnected from ${url}`, 'error');
                     currentRelay = null;
-                    postArea.style.display = 'none';
-                    feedContainer.style.display = 'none';
+                    postArea.classList.add('hidden');
+                    feedContainer.classList.add('hidden');
                     if (currentSub) currentSub.close();
+                    checkAppState();
                 };
 
                 startFeedSubscription(currentRelay);
                 checkAppState();
 
             } catch (error) {
-                console.error(error);
-                setStatus(`Error al conectar a ${url}: ${error.message || 'Error de conexión'}`, 'error');
+                log(`Connection Failed: ${error.message}`, 'error');
             } finally {
                 connectBtn.disabled = false;
-                connectBtn.textContent = 'Conectar';
+                connectBtn.textContent = 'Establish_Connection';
             }
         });
 
-        // NIP-07 Login Logic
         loginBtn.addEventListener('click', async () => {
-            if (!window.nostr) {
-                let msg = 'No se detectó ninguna extensión de Nostr (NIP-07).';
-                if (window.location.protocol === 'file:') {
-                    msg += '\n\n💡 Pista: Si estás abriendo el archivo localmente (file://), debes activar "Permitir acceso a las URL de archivo" en la configuración de tu extensión en Chrome (chrome://extensions).';
-                }
-                alert(msg);
-                return;
-            }
+            if (!window.nostr) return log('NIP-07 plugin not found. Check browser extensions.', 'error');
 
             try {
+                log('Requesting public key from extension...');
                 userPubKey = await window.nostr.getPublicKey();
                 const npub = nip19.npubEncode(userPubKey);
-                
-                const displayNpub = `${npub.substring(0, 10)}...${npub.substring(npub.length - 4)}`;
-                
-                profileBadge.textContent = displayNpub;
-                profileBadge.style.display = 'block';
-                loginBtn.style.display = 'none';
-                
+                profileBadge.textContent = `${npub.substring(0, 8)}...`;
+                profileBadge.classList.remove('hidden');
+                loginBtn.classList.add('hidden');
+                log(`Identity verified: ${npub}`);
                 checkAppState();
             } catch (error) {
-                console.error('Login error:', error);
-                alert('Error al obtener la clave pública: ' + error.message);
+                log(`Auth failed: ${error.message}`, 'error');
             }
         });
 
-        // Publish Message Logic
         publishBtn.addEventListener('click', async () => {
             const content = postContent.value.trim();
             if (!content) return;
 
-            if (!currentRelay) {
-                setStatus('No hay conexión con el relay.', 'error');
-                return;
-            }
+            if (!currentRelay) return log('Error: Cannot sign without active connection.', 'error');
 
             publishBtn.disabled = true;
-            publishBtn.textContent = 'Publicando...';
+            publishBtn.textContent = 'SIGNING...';
+            log('Requesting signature for Event Kind 1...');
 
             try {
                 const eventTemplate = {
@@ -591,56 +563,27 @@
                 };
 
                 const signedEvent = await window.nostr.signEvent(eventTemplate);
+                log(`Event signed. Publishing ID: ${signedEvent.id.substring(0, 8)}...`);
                 
-                // Añadimos un timeout manual de 10s por si el relay es lento con el OK
                 const publishTimeout = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('El relay tardó demasiado en confirmar. Es posible que el mensaje se haya publicado de todas formas.')), 10000)
+                    setTimeout(() => reject(new Error('Relay confirmation timeout (10s).')), 10000)
                 );
 
                 await Promise.race([
                     currentRelay.publish(signedEvent),
                     publishTimeout
                 ]);
-                
-                setStatus('¡Mensaje publicado con éxito!', 'success');
-                postContent.value = ''; // Limpiar tras el éxito
+
+                log('Relay confirmed receipt [OK].', 'info');
+                postContent.value = '';
             } catch (error) {
-                console.error('Publish error:', error);
-                setStatus('Error al publicar: ' + (error.message || 'Desconocido'), 'error');
+                log(`Broadcast failed: ${error.message}`, 'warn');
             } finally {
                 publishBtn.disabled = false;
-                publishBtn.textContent = 'Publicar';
+                publishBtn.textContent = 'Sign & Broadcast';
             }
-        });
-
-        // Theme Management
-        const themeToggle = document.getElementById('theme-toggle');
-        const darkIcon = document.getElementById('theme-icon-dark');
-        const lightIcon = document.getElementById('theme-icon-light');
-
-        function applyTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            if (theme === 'dark') {
-                darkIcon.style.display = 'none';
-                lightIcon.style.display = 'block';
-            } else {
-                darkIcon.style.display = 'block';
-                lightIcon.style.display = 'none';
-            }
-            localStorage.setItem('theme', theme);
-        }
-
-        // Initialize theme
-        const savedTheme = localStorage.getItem('theme') || 
-            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        applyTheme(savedTheme);
-
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
         });
     </script>
-
 </body>
 </html>
 
