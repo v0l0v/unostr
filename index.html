@@ -245,6 +245,71 @@
             padding-top: 2rem;
             border-top: 1px dashed rgba(30, 58, 95, 0.1);
             animation: slideUp 0.5s ease-out;
+            margin-bottom: 2rem;
+        }
+        
+        /* Feed Styles */
+        .feed-container {
+            display: none;
+            text-align: left;
+            margin-top: 2rem;
+            animation: slideUp 0.6s ease-out;
+        }
+        .feed-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: var(--color-text-primary);
+            padding-left: 0.5rem;
+        }
+        .event-card {
+            background: var(--color-surface);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: var(--transition);
+            animation: fadeIn 0.4s ease-out;
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--glass-shadow);
+        }
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            font-size: 0.75rem;
+        }
+        .event-author {
+            font-family: monospace;
+            color: var(--color-primary);
+            font-weight: 700;
+            background: rgba(121, 199, 247, 0.1);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+        .event-time {
+            color: var(--color-text-secondary);
+            font-weight: 500;
+        }
+        .event-content {
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            color: var(--color-text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         textarea {
             width: 100%;
@@ -317,6 +382,11 @@
             <textarea id="post-content" placeholder="¿Qué está pasando en Nostr?"></textarea>
             <button id="publish-btn" class="btn btn-publish">Publicar</button>
         </div>
+
+        <div id="feed-container" class="feed-container">
+            <h2 class="feed-title">Feed Reciente</h2>
+            <div id="feed-list"></div>
+        </div>
     </div>
 
     <script type="module">
@@ -334,12 +404,16 @@
         const postArea = document.getElementById('post-area');
         const postContent = document.getElementById('post-content');
         const publishBtn = document.getElementById('publish-btn');
+
+        const feedContainer = document.getElementById('feed-container');
+        const feedList = document.getElementById('feed-list');
         
         const btnPublic = document.getElementById('btn-public');
         const btnPrivate = document.getElementById('btn-private');
 
         let currentRelay = null;
         let userPubKey = null;
+        let currentSub = null;
 
         const DEFAULTS = {
             public: 'wss://relay.damus.io',
@@ -350,6 +424,61 @@
             if (currentRelay && userPubKey) {
                 postArea.style.display = 'block';
             }
+            if (currentRelay) {
+                feedContainer.style.display = 'block';
+            }
+        }
+
+        function formatTime(timestamp) {
+            return new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function createEventCard(event) {
+            const npub = nip19.npubEncode(event.pubkey);
+            const shortNpub = `${npub.substring(0, 8)}...${npub.substring(npub.length - 4)}`;
+            
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            card.innerHTML = `
+                <div class="event-header">
+                    <span class="event-author" title="${npub}">${shortNpub}</span>
+                    <span class="event-time">${formatTime(event.created_at)}</span>
+                </div>
+                <div class="event-content">${escapeHTML(event.content)}</div>
+            `;
+            return card;
+        }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function startFeedSubscription(relay) {
+            if (currentSub) currentSub.close();
+            
+            feedList.innerHTML = ''; // Limpiar feed anterior
+
+            currentSub = relay.subscribe([
+                {
+                    kinds: [1],
+                    limit: 20
+                }
+            ], {
+                onevent(event) {
+                    const card = createEventCard(event);
+                    feedList.prepend(card);
+                    
+                    // Mantener solo los últimos 50 mensajes en el DOM
+                    if (feedList.childElementCount > 50) {
+                        feedList.removeChild(feedList.lastChild);
+                    }
+                },
+                oneose() {
+                    console.log('Eose: historical events loaded');
+                }
+            });
         }
 
         // Switch to Public
@@ -396,8 +525,11 @@
                     setStatus(`Conexión cerrada con ${url}`, 'error');
                     currentRelay = null;
                     postArea.style.display = 'none';
+                    feedContainer.style.display = 'none';
+                    if (currentSub) currentSub.close();
                 };
 
+                startFeedSubscription(currentRelay);
                 checkAppState();
 
             } catch (error) {
