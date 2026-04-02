@@ -175,6 +175,35 @@
             font-family: monospace;
             border: 1px solid rgba(16, 185, 129, 0.2);
         }
+        .post-area {
+            display: none;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.5s ease-out;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            color: white;
+            padding: 1rem;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+            margin-bottom: 1rem;
+            transition: border-color 0.3s;
+        }
+        textarea:focus {
+            border-color: var(--accent);
+        }
+        .btn-publish {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -188,7 +217,7 @@
 <body>
     <div class="container">
         <div class="login-area">
-            <button id="login-btn" class="btn-login">Login con Alby/Nostr</button>
+            <button id="login-btn" class="btn-login">Login con NIP-07</button>
             <div id="profile-badge" class="profile-badge"></div>
         </div>
 
@@ -207,6 +236,11 @@
 
         <button id="connect-btn" class="btn">Conectar</button>
         <div id="status"></div>
+
+        <div id="post-area" class="post-area">
+            <textarea id="post-content" placeholder="¿Qué está pasando en Nostr?"></textarea>
+            <button id="publish-btn" class="btn btn-publish">Publicar</button>
+        </div>
     </div>
 
     <script type="module">
@@ -220,14 +254,27 @@
         const connectBtn = document.getElementById('connect-btn');
         const statusDiv = document.getElementById('status');
         const torNote = document.getElementById('tor-note');
+
+        const postArea = document.getElementById('post-area');
+        const postContent = document.getElementById('post-content');
+        const publishBtn = document.getElementById('publish-btn');
         
         const btnPublic = document.getElementById('btn-public');
         const btnPrivate = document.getElementById('btn-private');
+
+        let currentRelay = null;
+        let userPubKey = null;
 
         const DEFAULTS = {
             public: 'wss://relay.damus.io',
             private: 'ws://34tam2wfzzz7b5ai2oyuzhyozgjzvo4rrw3mzk4odjcspnkprtspqsqd.onion'
         };
+
+        function checkAppState() {
+            if (currentRelay && userPubKey) {
+                postArea.style.display = 'block';
+            }
+        }
 
         // Switch to Public
         btnPublic.addEventListener('click', () => {
@@ -264,12 +311,18 @@
             statusDiv.style.display = 'none';
 
             try {
-                const relay = await Relay.connect(url);
-                setStatus(`Conectado a ${relay.url}`, 'success');
+                if (currentRelay) await currentRelay.close();
                 
-                relay.onclose = () => {
+                currentRelay = await Relay.connect(url);
+                setStatus(`Conectado a ${currentRelay.url}`, 'success');
+                
+                currentRelay.onclose = () => {
                     setStatus(`Conexión cerrada con ${url}`, 'error');
+                    currentRelay = null;
+                    postArea.style.display = 'none';
                 };
+
+                checkAppState();
 
             } catch (error) {
                 console.error(error);
@@ -283,25 +336,59 @@
         // NIP-07 Login Logic
         loginBtn.addEventListener('click', async () => {
             if (!window.nostr) {
-                alert('No se detectó ninguna extensión de Nostr. Instala Alby o nos2x.');
+                alert('No se detectó ninguna extensión de Nostr (NIP-07).');
                 return;
             }
 
             try {
-                const pubKey = await window.nostr.getPublicKey();
-                const npub = nip19.npubEncode(pubKey);
+                userPubKey = await window.nostr.getPublicKey();
+                const npub = nip19.npubEncode(userPubKey);
                 
-                // Mostrar npub truncado: npub1...abcd
                 const displayNpub = `${npub.substring(0, 10)}...${npub.substring(npub.length - 4)}`;
                 
                 profileBadge.textContent = displayNpub;
                 profileBadge.style.display = 'block';
                 loginBtn.style.display = 'none';
                 
-                console.log('Logged in as:', npub);
+                checkAppState();
             } catch (error) {
                 console.error('Login error:', error);
                 alert('Error al obtener la clave pública: ' + error.message);
+            }
+        });
+
+        // Publish Message Logic
+        publishBtn.addEventListener('click', async () => {
+            const content = postContent.value.trim();
+            if (!content) return;
+
+            if (!currentRelay) {
+                setStatus('No hay conexión con el relay.', 'error');
+                return;
+            }
+
+            publishBtn.disabled = true;
+            publishBtn.textContent = 'Publicando...';
+
+            try {
+                const eventTemplate = {
+                    kind: 1,
+                    created_at: Math.floor(Date.now() / 1000),
+                    tags: [],
+                    content: content
+                };
+
+                const signedEvent = await window.nostr.signEvent(eventTemplate);
+                await currentRelay.publish(signedEvent);
+                
+                setStatus('¡Mensaje publicado con éxito!', 'success');
+                postContent.value = ''; // Limpiar tras el éxito
+            } catch (error) {
+                console.error('Publish error:', error);
+                setStatus('Error al publicar: ' + (error.message || 'Desconocido'), 'error');
+            } finally {
+                publishBtn.disabled = false;
+                publishBtn.textContent = 'Publicar';
             }
         });
     </script>
