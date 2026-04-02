@@ -544,7 +544,11 @@
         // NIP-07 Login Logic
         loginBtn.addEventListener('click', async () => {
             if (!window.nostr) {
-                alert('No se detectó ninguna extensión de Nostr (NIP-07).');
+                let msg = 'No se detectó ninguna extensión de Nostr (NIP-07).';
+                if (window.location.protocol === 'file:') {
+                    msg += '\n\n💡 Pista: Si estás abriendo el archivo localmente (file://), debes activar "Permitir acceso a las URL de archivo" en la configuración de tu extensión en Chrome (chrome://extensions).';
+                }
+                alert(msg);
                 return;
             }
 
