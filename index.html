@@ -149,6 +149,51 @@
             background: var(--accent-cyan);
         }
 
+        /* Relay Scroller Stylings */
+        .relay-scroller {
+            display: flex;
+            overflow-x: auto;
+            gap: 0.5rem;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-dim) transparent;
+        }
+
+        .relay-scroller::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .relay-scroller::-webkit-scrollbar-thumb {
+            background: var(--border-dim);
+            border-radius: 10px;
+        }
+
+        .relay-chip {
+            white-space: nowrap;
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            color: var(--text-secondary);
+            font-size: 0.65rem;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            font-weight: 700;
+            text-transform: lowercase;
+        }
+
+        .relay-chip:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .relay-chip.active {
+            background: var(--accent-cyan);
+            color: var(--bg-base);
+            border-color: var(--accent-cyan);
+        }
+
         .input-wrapper {
             display: flex;
             flex-direction: column;
@@ -445,6 +490,11 @@
                 <button id="btn-public" class="tab active" data-i18n="network_public">Red_Pública</button>
                 <button id="btn-private" class="tab" data-i18n="network_private">Tor_Cifrado</button>
             </div>
+
+            <!-- Relay Selection Scroller -->
+            <div id="relay-scroller" class="relay-scroller">
+                <!-- Chips will be generated here -->
+            </div>
             
             <div class="input-wrapper">
                 <label for="relay-url" data-i18n="relay_uri_label">URI_DEL_RELAY</label>
@@ -547,8 +597,6 @@
                 log_sign_start: 'Solicitando firma para Evento Tipo 1...',
                 log_publish_start: 'Evento firmado. Publicando ID: ',
                 log_publish_success: 'Relay confirmó recepción [OK].',
-                log_profile_init: 'Contactando red para el perfil: ',
-                log_profile_ok: 'Perfil almacenado para: ',
                 log_error: 'Error: ',
                 status_connected: 'CONECTADO // ',
                 publish_btn_label: 'Firmar y Transmitir'
@@ -579,6 +627,8 @@
         const langEn = document.getElementById('lang-en');
         const langEs = document.getElementById('lang-es');
 
+        const relayScroller = document.getElementById('relay-scroller');
+
         let currentRelay = null;
         let userPubKey = null;
         let currentSub = null;
@@ -590,6 +640,39 @@
             public: 'wss://nos.lol',
             private: 'ws://34tam2wfzzz7b5ai2oyuzhyozgjzvo4rrw3mzk4odjcspnkprtspqsqd.onion'
         };
+
+        const PRESET_RELAYS = [
+            'wss://nos.lol',
+            'wss://relay.damus.io',
+            'wss://nostr.mom',
+            'wss://relay.nostr.band',
+            'wss://purplepag.es',
+            'wss://relay.snort.social',
+            'wss://eden.nostr.land',
+            'wss://relay.current.fyi',
+            'wss://brb.io',
+            'wss://nostr.pub'
+        ];
+
+        function initRelayScroller() {
+            relayScroller.innerHTML = '';
+            PRESET_RELAYS.forEach(url => {
+                const name = url.split('://')[1].split('/')[0];
+                const chip = document.createElement('button');
+                chip.className = 'relay-chip';
+                if (url === relayInput.value) chip.classList.add('active');
+                chip.textContent = name;
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll('.relay-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    relayInput.value = url;
+                    btnPublic.classList.add('active');
+                    btnPrivate.classList.remove('active');
+                    torNote.classList.add('hidden');
+                });
+                relayScroller.appendChild(chip);
+            });
+        }
 
         function setLanguage(lang) {
             currentLang = lang;
@@ -643,7 +726,6 @@
             PROFILES[pubkey] = { name: null, picture: null, loading: true };
 
             try {
-                // BUG FIX: passing callbacks inside the subscribe method (nostr-tools v2 style)
                 const sub = currentRelay.subscribe([
                     { kinds: [0], authors: [pubkey], limit: 1 }
                 ], {
@@ -695,7 +777,7 @@
             const shortNpub = `${npub.substring(0, 8)}...${npub.substring(npub.length - 4)}`;
             
             const profile = PROFILES[event.pubkey] || { name: null, picture: null };
-            const displayName = profile.name || shortNpub; // Use npub as name fallback
+            const displayName = profile.name || shortNpub;
             
             const card = document.createElement('div');
             card.className = 'event-card';
@@ -756,6 +838,7 @@
             btnPrivate.classList.remove('active');
             relayInput.value = DEFAULTS.public;
             torNote.classList.add('hidden');
+            initRelayScroller();
         });
 
         btnPrivate.addEventListener('click', () => {
@@ -763,6 +846,7 @@
             btnPublic.classList.remove('active');
             relayInput.value = DEFAULTS.private;
             torNote.classList.remove('hidden');
+            initRelayScroller();
         });
 
         connectBtn.addEventListener('click', async () => {
@@ -857,6 +941,7 @@
         });
 
         setLanguage('es');
+        initRelayScroller();
     </script>
 </body>
 </html>
