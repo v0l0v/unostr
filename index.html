@@ -149,7 +149,6 @@
             background: var(--accent-cyan);
         }
 
-        /* Relay Scroller Stylings */
         .relay-scroller {
             display: flex;
             overflow-x: auto;
@@ -454,6 +453,20 @@
         .status-online { color: var(--accent-green); border-color: rgba(0, 255, 65, 0.2); background: rgba(0, 255, 65, 0.05); }
         .status-offline { color: var(--accent-red); border-color: rgba(255, 62, 62, 0.2); background: rgba(255, 62, 62, 0.05); }
 
+        /* Manual Login specific stylings */
+        #manual-login-area {
+            margin-top: 1rem;
+            border-top: 1px dashed var(--border-dim);
+            padding-top: 1rem;
+        }
+
+        .caution-text {
+            color: var(--accent-red);
+            font-size: 0.65rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
         @media (max-width: 600px) {
             header { padding: 1rem; }
             .brand-container { gap: 0.5rem; flex-direction: column; align-items: flex-start; }
@@ -479,29 +492,37 @@
         <div class="header-actions">
             <div id="ws-status" class="status-badge status-offline" data-i18n="conn_not_connected">NO_CONECTADO</div>
             <button id="login-btn" class="btn" data-i18n="login_nip07">Acceder (NIP-07)</button>
+            <button id="toggle-manual-btn" class="btn" data-i18n="login_manual_btn">Manual (nsec)</button>
             <div id="profile-badge" class="hidden status-badge status-online"></div>
         </div>
     </header>
 
     <main>
+        <!-- Manual Login Area (Hidden by default) -->
+        <section id="manual-login-area" class="card hidden">
+            <div class="section-title" data-i18n="login_manual_title">Autenticación Manual</div>
+            <p class="caution-text" data-i18n="caution_nsec">[!] PRECAUCIÓN: No compartas tu nsec en sitios no confiables. Se borrará al recargar.</p>
+            <div class="input-wrapper">
+                <label for="nsec-input">NSEC_KEY</label>
+                <input type="password" id="nsec-input" placeholder="nsec1..." autocomplete="off">
+            </div>
+            <div class="btn-group">
+                <button id="manual-auth-btn" class="btn primary" data-i18n="btn_authenticate">Autenticar_Criptografía</button>
+            </div>
+        </section>
+
         <section class="card">
             <div class="section-title" data-i18n="section_conn">Configuración de Conexión</div>
             <div class="tabs">
                 <button id="btn-public" class="tab active" data-i18n="network_public">Red_Pública</button>
                 <button id="btn-private" class="tab" data-i18n="network_private">Tor_Cifrado</button>
             </div>
-
-            <!-- Relay Selection Scroller -->
-            <div id="relay-scroller" class="relay-scroller">
-                <!-- Chips will be generated here -->
-            </div>
-            
+            <div id="relay-scroller" class="relay-scroller"></div>
             <div class="input-wrapper">
                 <label for="relay-url" data-i18n="relay_uri_label">URI_DEL_RELAY</label>
                 <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
                 <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;" data-i18n="tor_warning">[AVISO] Las direcciones .onion requieren el navegador Tor.</p>
             </div>
-
             <div class="btn-group">
                 <button id="connect-btn" class="btn primary" data-i18n="btn_establish_conn">Establecer_Conexión</button>
             </div>
@@ -532,12 +553,16 @@
     </footer>
 
     <script type="module">
-        import { Relay, nip19 } from 'https://esm.sh/nostr-tools@2.20.0';
+        import { Relay, nip19, finalizeEvent, getPublicKey } from 'https://esm.sh/nostr-tools@2.20.0';
 
         const TRANSLATIONS = {
             en: {
                 conn_not_connected: 'NOT_CONNECTED',
                 login_nip07: 'Login (NIP-07)',
+                login_manual_btn: 'Manual (nsec)',
+                login_manual_title: 'Manual Authentication',
+                caution_nsec: '[!] CAUTION: Do not share your nsec on untrusted sites. It will be cleared on reload.',
+                btn_authenticate: 'Authenticate_Crypto',
                 section_conn: 'Connectivity Config',
                 network_public: 'Public_Network',
                 network_private: 'Tor_Encrypted',
@@ -559,12 +584,11 @@
                 log_disconnected: 'Disconnected from ',
                 log_sub_start: 'Starting subscription kind:1 for ',
                 log_auth_start: 'Requesting public key from extension...',
+                log_auth_manual: 'Attempting local authentication with provided nsec...',
                 log_auth_success: 'Identity verified: ',
                 log_sign_start: 'Requesting signature for Event Kind 1...',
                 log_publish_start: 'Event signed. Publishing ID: ',
                 log_publish_success: 'Relay confirmed receipt [OK].',
-                log_profile_init: 'Contacting network for profile: ',
-                log_profile_ok: 'Profile data cached for: ',
                 log_error: 'Error: ',
                 status_connected: 'CONNECTED // ',
                 publish_btn_label: 'Sign & Broadcast'
@@ -572,6 +596,10 @@
             es: {
                 conn_not_connected: 'NO_CONECTADO',
                 login_nip07: 'Acceder (NIP-07)',
+                login_manual_btn: 'Manual (nsec)',
+                login_manual_title: 'Autenticación Manual',
+                caution_nsec: '[!] PRECAUCIÓN: No compartas tu nsec en sitios no confiables. Se borrará al recargar.',
+                btn_authenticate: 'Autenticar_Criptografía',
                 section_conn: 'Configuración de Conexión',
                 network_public: 'Red_Pública',
                 network_private: 'Tor_Cifrado',
@@ -593,6 +621,7 @@
                 log_disconnected: 'Desconectado de ',
                 log_sub_start: 'Iniciando suscripción tipo:1 para ',
                 log_auth_start: 'Solicitando clave pública a la extensión...',
+                log_auth_manual: 'Intentando autenticación local con el nsec provisto...',
                 log_auth_success: 'Identidad verificada: ',
                 log_sign_start: 'Solicitando firma para Evento Tipo 1...',
                 log_publish_start: 'Evento firmado. Publicando ID: ',
@@ -604,6 +633,11 @@
         };
 
         const loginBtn = document.getElementById('login-btn');
+        const manualToggleBtn = document.getElementById('toggle-manual-btn');
+        const manualArea = document.getElementById('manual-login-area');
+        const nsecInput = document.getElementById('nsec-input');
+        const manualAuthBtn = document.getElementById('manual-auth-btn');
+
         const profileBadge = document.getElementById('profile-badge');
         const wsStatus = document.getElementById('ws-status');
 
@@ -631,6 +665,7 @@
 
         let currentRelay = null;
         let userPubKey = null;
+        let userSecretKey = null; // Uint8Array for local signing
         let currentSub = null;
         let currentLang = 'es';
 
@@ -892,11 +927,56 @@
                 profileBadge.textContent = `${npub.substring(0, 8)}...`;
                 profileBadge.classList.remove('hidden');
                 loginBtn.classList.add('hidden');
+                manualToggleBtn.classList.add('hidden');
                 log('log_auth_success', npub);
                 checkAppState();
                 fetchProfile(userPubKey);
             } catch (error) {
                 log('log_error', error.message, 'error');
+            }
+        });
+
+        // Manual Login Handlers
+        manualToggleBtn.addEventListener('click', () => {
+            manualArea.classList.toggle('hidden');
+            nsecInput.focus();
+        });
+
+        manualAuthBtn.addEventListener('click', async () => {
+            let val = nsecInput.value.trim();
+            if (!val) return;
+
+            log('log_auth_manual');
+            try {
+                let hexSk;
+                if (val.startsWith('nsec1')) {
+                    const decoded = nip19.decode(val);
+                    if (decoded.type !== 'nsec') throw new Error('Invalid NSEC');
+                    hexSk = decoded.data;
+                } else {
+                    // Try as hex
+                    hexSk = new Uint8Array(val.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+                }
+
+                userSecretKey = hexSk;
+                userPubKey = getPublicKey(userSecretKey);
+                
+                const npub = nip19.npubEncode(userPubKey);
+                profileBadge.textContent = `${npub.substring(0, 8)}... [M]`;
+                profileBadge.classList.remove('hidden');
+                loginBtn.classList.add('hidden');
+                manualToggleBtn.classList.add('hidden');
+                manualArea.classList.add('hidden');
+                
+                log('log_auth_success', npub);
+                checkAppState();
+                if (currentRelay) fetchProfile(userPubKey);
+                
+                // Clear input for safety
+                nsecInput.value = '';
+
+            } catch (error) {
+                log('log_error', 'Autenticación manual fallida: ' + error.message, 'error');
             }
         });
 
@@ -918,7 +998,15 @@
                     content: content
                 };
 
-                const signedEvent = await window.nostr.signEvent(eventTemplate);
+                let signedEvent;
+                if (userSecretKey) {
+                    // Local signing (Manual nsec)
+                    signedEvent = finalizeEvent(eventTemplate, userSecretKey);
+                } else {
+                    // Extension signing (NIP-07)
+                    signedEvent = await window.nostr.signEvent(eventTemplate);
+                }
+
                 log('log_publish_start', `${signedEvent.id.substring(0, 8)}...`);
                 
                 const publishTimeout = new Promise((_, reject) => 
