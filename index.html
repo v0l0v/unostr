@@ -1701,6 +1701,7 @@
                     <button class="btn-react" ${!userPubKey ? 'disabled' : ''} title="Reaccionar (+)">⚡</button>
                     ${event.pubkey === userPubKey ? `<button class="btn-edit-event" title="Editar este evento">⚙️</button>` : ''}
                     <button class="btn-translate" title="Traducir al Español">🌐</button>
+                    <button class="btn-copy-link" title="Copiar enlace a esta nota (nevent)">📋</button>
                     <button class="btn-inspect" title="Ver contenido original (JSON)">[JSON]</button>
                 </div>
                 ${renderContent(event.content)}
@@ -1841,6 +1842,29 @@
             const inspector = card.querySelector('.inspector-panel');
             btnInspect.addEventListener('click', () => {
                 inspector.classList.toggle('visible');
+            });
+
+            // Copy note link as nostr:nevent1
+            const btnCopyLink = card.querySelector('.btn-copy-link');
+            btnCopyLink.addEventListener('click', async () => {
+                try {
+                    const nevent = nip19.neventEncode({
+                        id: event.id,
+                        relays: currentRelay ? [currentRelay.url] : [],
+                        author: event.pubkey
+                    });
+                    const link = `nostr:${nevent}`;
+                    await navigator.clipboard.writeText(link);
+                    btnCopyLink.textContent = '✅';
+                    btnCopyLink.title = `¡Copiado! ${link.substring(0, 30)}...`;
+                    setTimeout(() => {
+                        btnCopyLink.textContent = '📋';
+                        btnCopyLink.title = 'Copiar enlace a esta nota (nevent)';
+                    }, 2000);
+                } catch (err) {
+                    btnCopyLink.textContent = '❌';
+                    setTimeout(() => { btnCopyLink.textContent = '📋'; }, 2000);
+                }
             });
 
             if (!profile.name) fetchProfile(event.pubkey);
