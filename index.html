@@ -655,24 +655,26 @@
         }
 
         .btn-media {
-            background: transparent;
-            border: 1px solid var(--border-dim);
-            color: var(--text-dim);
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
             font-size: 0.7rem;
-            padding: 2px 6px;
+            padding: 2px 8px;
             cursor: pointer;
             transition: var(--transition);
+            margin-right: 8px; /* Desplazado a la izquierda del grupo */
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0, 242, 255, 0.2);
         }
 
         .btn-media:hover {
-            color: var(--accent-cyan);
-            border-color: var(--accent-cyan);
+            background: rgba(0, 242, 255, 0.15);
+            box-shadow: 0 0 10px var(--accent-cyan);
         }
 
         .btn-media.active {
-            color: var(--accent-cyan);
-            border-color: var(--accent-cyan);
-            background: rgba(0, 242, 255, 0.1);
+            background: var(--accent-cyan);
+            color: #000;
         }
 
         .json-prefix {
@@ -682,6 +684,19 @@
             margin-bottom: 0.2rem;
             display: block;
             padding-left: 50px;
+        }
+
+        .npub-link {
+            color: var(--accent-cyan);
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .npub-link:hover {
+            text-decoration: underline;
+            color: var(--accent-amber);
+            text-shadow: 0 0 5px rgba(255, 176, 0, 0.4);
         }
 
         .npub-link {
@@ -1054,7 +1069,8 @@
         let currentSub = null;
         let currentLang = 'es';
         let followedPubkeys = new Set(JSON.parse(localStorage.getItem('followed_pubkeys') || '[]'));
-        let feedMode = 'global'; // 'global' or 'following'
+        let feedMode = 'global'; // 'global', 'following', 'profile'
+        let currentProfilePubkey = null;
 
         const PROFILES = {}; 
 
@@ -1311,10 +1327,10 @@
                     </div>
                 </div>
                 <div class="event-actions" style="gap: 0.25rem;">
+                    ${mediaUrls.length > 0 ? `<button class="btn-media" title="Ver Media [▶️]">▶️</button>` : ''}
                     <button class="btn-follow-toggle" style="color: ${isFollowing ? 'var(--accent-amber)' : 'var(--text-dim)'}" title="${isFollowing ? 'Dejar de seguir' : 'Seguir usuario'}">
                         ${isFollowing ? '★' : '☆'}
                     </button>
-                    ${mediaUrls.length > 0 ? `<button class="btn-media" title="Ver Media [👁️]">👁️</button>` : ''}
                     <button class="btn-react" ${!userPubKey ? 'disabled' : ''} title="Reaccionar (+)">⚡</button>
                     <button class="btn-translate" title="Traducir al Español">🌐</button>
                     <button class="btn-inspect" title="Ver contenido original (JSON)">[JSON]</button>
@@ -1336,7 +1352,7 @@
                             if (isVideo) {
                                 return `<video src="${url}" controls style="max-width: 100%; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"></video>`;
                             }
-                            return `<img src="${url}" alt="Media [👁️]" loading="lazy">`;
+                            return `<img src="${url}" alt="Media [▶️]" loading="lazy">`;
                         }).join('');
                         preview.classList.remove('hidden');
                         btnMedia.classList.add('active');
@@ -1459,6 +1475,28 @@
             return card;
         }
 
+        window.viewProfile = (npubOrPubkey) => {
+            try {
+                let pubkey = npubOrPubkey;
+                if (npubOrPubkey.startsWith('npub1')) {
+                    const decoded = nip19.decode(npubOrPubkey);
+                    pubkey = decoded.data;
+                }
+                feedMode = 'profile';
+                currentProfilePubkey = pubkey;
+                
+                // Unset tabs
+                feedGlobalBtn.classList.remove('active');
+                feedFollowingBtn.classList.remove('active');
+                followBox.classList.add('hidden');
+                
+                if (currentRelay) startFeedSubscription(currentRelay);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (err) {
+                console.error('View profile failed', err);
+            }
+        };
+
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
             feedList.innerHTML = '';
@@ -1470,6 +1508,8 @@
                     return;
                 }
                 filter.authors = [...followedPubkeys];
+            } else if (feedMode === 'profile' && currentProfilePubkey) {
+                filter.authors = [currentProfilePubkey];
             }
 
             log('log_sub_start', `${relay.url} [Mode: ${feedMode}]`);
@@ -1539,9 +1579,14 @@
                 followBox.classList.remove('hidden');
                 feedFollowingBtn.classList.add('active');
                 feedGlobalBtn.classList.remove('active');
-            } else {
+            } else if (feedMode === 'global') {
                 followBox.classList.add('hidden');
                 feedGlobalBtn.classList.add('active');
+                feedFollowingBtn.classList.remove('active');
+            } else {
+                // Profile mode
+                followBox.classList.add('hidden');
+                feedGlobalBtn.classList.remove('active');
                 feedFollowingBtn.classList.remove('active');
             }
         }
