@@ -1087,12 +1087,12 @@
                     </div>
                 </div>
                 <div class="event-actions" style="gap: 0.25rem;">
-                    <button class="btn-follow-toggle btn-inspect" style="color: ${isFollowing ? 'var(--accent-amber)' : 'var(--text-dim)'}">
+                    <button class="btn-follow-toggle" style="color: ${isFollowing ? 'var(--accent-amber)' : 'var(--text-dim)'}" title="${isFollowing ? 'Dejar de seguir' : 'Seguir usuario'}">
                         ${isFollowing ? '★' : '☆'}
                     </button>
                     <button class="btn-react" ${!userPubKey ? 'disabled' : ''} title="Reaccionar (+)">⚡</button>
                     <button class="btn-translate" title="Traducir al Español">🌐</button>
-                    <button class="btn-inspect">[JSON]</button>
+                    <button class="btn-inspect" title="Ver contenido original (JSON)">[JSON]</button>
                 </div>
                 <div class="event-content">${escapeHTML(event.content)}</div>
                 <div class="translation-block hidden"></div>
@@ -1111,12 +1111,13 @@
                 }
                 localStorage.setItem('followed_pubkeys', JSON.stringify([...followedPubkeys]));
                 
-                // Refresh all instances of follow button for this pubkey
-                document.querySelectorAll(`[data-author="${pub}"] .btn-follow-toggle`).forEach(btn => {
-                    const active = followedPubkeys.has(pub);
-                    btn.textContent = active ? '★' : '☆';
-                    btn.style.color = active ? 'var(--accent-amber)' : 'var(--text-dim)';
-                });
+                    // Update all instances of follow button for this pubkey
+                    document.querySelectorAll(`[data-author="${pub}"] .btn-follow-toggle`).forEach(btn => {
+                        const active = followedPubkeys.has(pub);
+                        btn.textContent = active ? '★' : '☆';
+                        btn.style.color = active ? 'var(--accent-amber)' : 'var(--text-dim)';
+                        btn.title = active ? 'Dejar de seguir' : 'Seguir usuario';
+                    });
 
                 if (feedMode === 'following') startFeedSubscription(currentRelay);
                 
