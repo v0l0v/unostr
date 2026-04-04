@@ -455,6 +455,12 @@
             overflow-wrap: anywhere;
             word-break: break-word; /* Fallback for older browsers */
             padding-left: 50px;
+            transition: opacity 0.3s ease;
+        }
+
+        .event-content.attenuated {
+            opacity: 0.4;
+            font-size: 0.85rem;
         }
 
         .event-actions {
@@ -522,6 +528,35 @@
 
         .inspector-panel.visible {
             display: block;
+        }
+
+        .translation-block {
+            margin-top: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(0, 242, 255, 0.05);
+            border-left: 2px solid var(--accent-cyan);
+            font-size: 1rem;
+            color: var(--accent-cyan);
+            margin-left: 50px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            border-radius: 0 4px 4px 0;
+            box-shadow: inset 2px 0 10px rgba(0, 242, 255, 0.05);
+        }
+
+        .btn-translate {
+            background: transparent;
+            border: 1px solid var(--border-dim);
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            cursor: pointer;
+            padding: 2px 4px;
+            transition: var(--transition);
+        }
+
+        .btn-translate:hover {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
         }
 
         .status-badge {
@@ -1056,9 +1091,11 @@
                         ${isFollowing ? '★' : '☆'}
                     </button>
                     <button class="btn-react" ${!userPubKey ? 'disabled' : ''} title="Reaccionar (+)">⚡</button>
+                    <button class="btn-translate" title="Traducir al Español">🌐</button>
                     <button class="btn-inspect">[JSON]</button>
                 </div>
                 <div class="event-content">${escapeHTML(event.content)}</div>
+                <div class="translation-block hidden"></div>
                 <div class="inspector-panel">${JSON.stringify(event, null, 4)}</div>
             `;
             
@@ -1122,6 +1159,41 @@
                 } catch (err) {
                     log('log_error', 'Reacción fallida: ' + err.message, 'error');
                     btnReact.disabled = false;
+                }
+            });
+
+            const btnTranslate = card.querySelector('.btn-translate');
+            const translationBlock = card.querySelector('.translation-block');
+            btnTranslate.addEventListener('click', async () => {
+                if (btnTranslate.disabled) return;
+                
+                const originalText = event.content;
+                btnTranslate.disabled = true;
+                btnTranslate.textContent = '...';
+
+                try {
+                    const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalText)}&langpair=auto|es`);
+                    const data = await response.json();
+                    
+                    if (data.responseData) {
+                        const contentDiv = card.querySelector('.event-content');
+                        contentDiv.classList.add('attenuated');
+                        translationBlock.textContent = data.responseData.translatedText;
+                        translationBlock.classList.remove('hidden');
+                        btnTranslate.textContent = 'ES';
+                        btnTranslate.style.color = 'var(--accent-cyan)';
+                        btnTranslate.style.borderColor = 'var(--accent-cyan)';
+                    } else {
+                        throw new Error('No translation returned');
+                    }
+                } catch (err) {
+                    console.error('Translation error:', err);
+                    btnTranslate.textContent = '❌';
+                } finally {
+                    btnTranslate.disabled = false;
+                    if (btnTranslate.textContent !== 'ES' && btnTranslate.textContent !== '❌') {
+                        btnTranslate.textContent = '🌐';
+                    }
                 }
             });
 
