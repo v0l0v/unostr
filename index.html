@@ -2269,8 +2269,14 @@
                 if (id.startsWith('nostr:')) id = id.substring(6);
                 const decoded = nip19.decode(id);
                 let hexId = id;
-                if (decoded.type === 'note') hexId = decoded.data;
-                else if (decoded.type === 'nevent') hexId = decoded.data.id;
+                let hintRelays = [];
+
+                if (decoded.type === 'note') {
+                    hexId = decoded.data;
+                } else if (decoded.type === 'nevent') {
+                    hexId = decoded.data.id;
+                    hintRelays = decoded.data.relays || [];
+                }
 
                 // Se viene desde perfil: prepend en vez de limpiar
                 const comingFromProfile = feedMode === 'profile';
@@ -2281,30 +2287,91 @@
                 manageDynamicTab('event', id);
                 updateFeedTabs();
 
-                if (currentRelay) {
-                    if (comingFromProfile) {
-                        // Only fetch and prepend this specific event without clearing
-                        appendEventToFeed(hexId, currentRelay);
-                    } else {
-                        startFeedSubscription(currentRelay);
-                    }
+                if (comingFromProfile) {
+                    // Append specific event without clearing profile feed
+                    fetchEventFromHints(hexId, hintRelays, true);
+                } else {
+                    // Clear and show only this event
+                    feedList.innerHTML = '';
+                    fetchEventFromHints(hexId, hintRelays, false);
                 }
+
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (err) {
                 log('log_error', 'Error al abrir evento: ' + err.message, 'error');
             }
         };
 
-        function appendEventToFeed(hexId, relay) {
-            const sub = relay.subscribe([{ kinds: [1], ids: [hexId], limit: 1 }], {
-                onevent(event) {
-                    const card = createEventCard(event);
-                    feedList.prepend(card);
-                    sub.close();
-                },
-                oneose() { sub.close(); }
-            });
+        // Fetch a single event, trying hint relays first, then falling back to currentRelay
+        async function fetchEventFromHints(hexId, hintRelays, prependOnly) {
+            const filter = [{ kinds: [1], ids: [hexId], limit: 1 }];
+            let found = false;
+
+            // Build list: hint relays first, then active relay as fallback
+            const toTry = [];
+            if (hintRelays && hintRelays.length > 0) {
+                toTry.push(...hintRelays.slice(0, 3)); // max 3 hints
+            }
+            if (currentRelay && !toTry.includes(currentRelay.url)) {
+                toTry.push(currentRelay.url);
+            }
+
+            log('log_sub_start', `Buscando evento en: ${toTry.join(', ')}`);
+
+            for (const relayUrl of toTry) {
+                if (found) break;
+                try {
+                    let tempRelay;
+                    // Re-use current relay if same URL
+                    if (currentRelay && currentRelay.url === relayUrl) {
+                        tempRelay = currentRelay;
+                    } else {
+                        log('log_connecting', relayUrl + ' (hint)');
+                        tempRelay = new Relay(relayUrl);
+                        await tempRelay.connect();
+                    }
+
+                    await new Promise((resolve) => {
+                        const sub = tempRelay.subscribe(filter, {
+                            onevent(event) {
+                                if (!found) {
+                                    found = true;
+                                    const card = createEventCard(event);
+                                    if (prependOnly) {
+                                        feedList.prepend(card);
+                                    } else {
+                                        feedList.innerHTML = '';
+                                        feedList.appendChild(card);
+                                    }
+                                    log('log_connected', `Evento encontrado en ${relayUrl}`);
+                                }
+                                sub.close();
+                                resolve();
+                            },
+                            oneose() {
+                                sub.close();
+                                resolve();
+                            }
+                        });
+                    });
+
+                    // Close temp connection if it's not the main relay
+                    if (tempRelay !== currentRelay) {
+                        tempRelay.close();
+                    }
+                } catch (e) {
+                    log('log_error', `Hint relay ${relayUrl} falló: ${e.message}`, 'warn');
+                }
+            }
+
+            if (!found) {
+                if (!prependOnly) {
+                    feedList.innerHTML = '<div class="dim" style="padding:2rem;text-align:center;">Evento no encontrado en ningún relay conocido.</div>';
+                }
+                log('log_error', 'Evento no encontrado en los relays probados', 'warn');
+            }
         }
+
 
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
