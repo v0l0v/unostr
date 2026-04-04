@@ -748,9 +748,13 @@
             </section>
 
             <section id="feed-container" class="card hidden">
-                <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
-                <div id="feed-list"></div>
-            </section>
+            <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
+            <div class="tabs">
+                <button id="feed-global" class="tab active" data-i18n="feed_global">GLOBAL</button>
+                <button id="feed-following" class="tab" data-i18n="feed_following">SIGUIENDO</button>
+            </div>
+            <div id="feed-list"></div>
+        </section>
         </main>
     </div>
 
@@ -809,7 +813,13 @@
                 log_react_start: 'Signing reaction Kind 7...',
                 log_react_ok: 'Reaction sent successfully.',
                 btn_logout: 'Logout',
-                btn_close: 'Close'
+                btn_close: 'Close',
+                feed_global: 'GLOBAL',
+                feed_following: 'FOLLOWING',
+                btn_follow: 'Follow',
+                btn_unfollow: 'Unfollow',
+                log_follow_ok: 'Successfully added to following.',
+                log_unfollow_ok: 'Successfully removed from following.'
             },
             es: {
                 conn_not_connected: 'NO_CONECTADO',
@@ -852,7 +862,13 @@
                 log_react_start: 'Firmando reacción Tipo 7...',
                 log_react_ok: 'Reacción enviada con éxito.',
                 btn_logout: 'Cerrar Sesión',
-                btn_close: 'Cerrar'
+                btn_close: 'Cerrar',
+                feed_global: 'GLOBAL',
+                feed_following: 'SIGUIENDO',
+                btn_follow: 'Seguir',
+                btn_unfollow: 'Dejar de seguir',
+                log_follow_ok: 'Usuario añadido a seguidos correctamente.',
+                log_unfollow_ok: 'Usuario eliminado de seguidos correctamente.'
             }
         };
 
@@ -889,9 +905,11 @@
 
         let currentRelay = null;
         let userPubKey = null;
-        let userSecretKey = null; // Uint8Array for local signing
+        let userSecretKey = null; 
         let currentSub = null;
         let currentLang = 'es';
+        let followedPubkeys = new Set(JSON.parse(localStorage.getItem('followed_pubkeys') || '[]'));
+        let feedMode = 'global'; // 'global' or 'following'
 
         const PROFILES = {}; 
 
@@ -1043,6 +1061,7 @@
             
             const profile = PROFILES[event.pubkey] || { name: null, picture: null };
             const displayName = profile.name || shortNpub;
+            const isFollowing = followedPubkeys.has(event.pubkey);
             
             const card = document.createElement('div');
             card.className = 'event-card';
@@ -1060,7 +1079,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="event-actions">
+                <div class="event-actions" style="gap: 0.25rem;">
+                    <button class="btn-follow-toggle btn-inspect" style="color: ${isFollowing ? 'var(--accent-amber)' : 'var(--text-dim)'}">
+                        ${isFollowing ? '★' : '☆'}
+                    </button>
                     <button class="btn-react" ${!userPubKey ? 'disabled' : ''} title="Reaccionar (+)">⚡</button>
                     <button class="btn-inspect">[JSON]</button>
                 </div>
@@ -1068,6 +1090,33 @@
                 <div class="inspector-panel">${JSON.stringify(event, null, 4)}</div>
             `;
             
+            const btnFollow = card.querySelector('.btn-follow-toggle');
+            btnFollow.addEventListener('click', async () => {
+                const pub = event.pubkey;
+                if (followedPubkeys.has(pub)) {
+                    followedPubkeys.delete(pub);
+                    log('log_unfollow_ok', shortNpub);
+                } else {
+                    followedPubkeys.add(pub);
+                    log('log_follow_ok', shortNpub);
+                }
+                localStorage.setItem('followed_pubkeys', JSON.stringify([...followedPubkeys]));
+                
+                // Refresh all instances of follow button for this pubkey
+                document.querySelectorAll(`[data-author="${pub}"] .btn-follow-toggle`).forEach(btn => {
+                    const active = followedPubkeys.has(pub);
+                    btn.textContent = active ? '★' : '☆';
+                    btn.style.color = active ? 'var(--accent-amber)' : 'var(--text-dim)';
+                });
+
+                if (feedMode === 'following') startFeedSubscription(currentRelay);
+                
+                // If logged in, we should ideally push a Kind 3 update here
+                if (userPubKey) {
+                    syncFollowsToRelay();
+                }
+            });
+
             const btnReact = card.querySelector('.btn-react');
             btnReact.addEventListener('click', async () => {
                 if (!currentRelay || !userPubKey) return;
@@ -1118,15 +1167,23 @@
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
             feedList.innerHTML = '';
-            log('log_sub_start', relay.url);
+            
+            const filter = { kinds: [1], limit: 40 };
+            if (feedMode === 'following') {
+                if (followedPubkeys.size === 0) {
+                    feedList.innerHTML = '<div class="dim" style="padding: 2rem; text-align: center;">No sigues a nadie todavía. ¡Explora el Global!</div>';
+                    return;
+                }
+                filter.authors = [...followedPubkeys];
+            }
 
-            currentSub = relay.subscribe([
-                { kinds: [1], limit: 20 }
-            ], {
+            log('log_sub_start', `${relay.url} [Mode: ${feedMode}]`);
+
+            currentSub = relay.subscribe([filter], {
                 onevent(event) {
                     const card = createEventCard(event);
                     feedList.prepend(card);
-                    if (feedList.childElementCount > 30) feedList.removeChild(feedList.lastChild);
+                    if (feedList.childElementCount > 40) feedList.removeChild(feedList.lastChild);
                 },
                 oneose() {
                     log('log_connected', relay.url);
@@ -1134,6 +1191,66 @@
                 }
             });
         }
+
+        async function syncFollowsToRelay() {
+            if (!userPubKey || !currentRelay) return;
+            try {
+                const tags = [...followedPubkeys].map(p => ['p', p]);
+                const contactEvent = {
+                    kind: 3,
+                    created_at: Math.floor(Date.now() / 1000),
+                    tags: tags,
+                    content: ''
+                };
+
+                let signed;
+                if (userSecretKey) signed = finalizeEvent(contactEvent, userSecretKey);
+                else if (window.nostr) signed = await window.nostr.signEvent(contactEvent);
+
+                if (signed) await currentRelay.publish(signed);
+            } catch (e) {
+                console.error('Failed to sync follows', e);
+            }
+        }
+
+        async function fetchKind3Follows(pubkey) {
+            if (!currentRelay) return;
+            log('log_info', 'Fetching contact list (Kind 3)...');
+            const sub = currentRelay.subscribe([
+                { kinds: [3], authors: [pubkey], limit: 1 }
+            ], {
+                onevent(event) {
+                    const remoteFollows = event.tags.filter(t => t[0] === 'p').map(t => t[1]);
+                    if (remoteFollows.length > 0) {
+                        remoteFollows.forEach(p => followedPubkeys.add(p));
+                        localStorage.setItem('followed_pubkeys', JSON.stringify([...followedPubkeys]));
+                        log('log_info', `Imported ${remoteFollows.length} contacts.`);
+                        if (feedMode === 'following') startFeedSubscription(currentRelay);
+                    }
+                    sub.close();
+                },
+                oneose() { sub.close(); }
+            });
+        }
+
+        const feedGlobalBtn = document.getElementById('feed-global');
+        const feedFollowingBtn = document.getElementById('feed-following');
+
+        feedGlobalBtn.addEventListener('click', () => {
+            if (feedMode === 'global') return;
+            feedMode = 'global';
+            feedGlobalBtn.classList.add('active');
+            feedFollowingBtn.classList.remove('active');
+            if (currentRelay) startFeedSubscription(currentRelay);
+        });
+
+        feedFollowingBtn.addEventListener('click', () => {
+            if (feedMode === 'following') return;
+            feedMode = 'following';
+            feedFollowingBtn.classList.add('active');
+            feedGlobalBtn.classList.remove('active');
+            if (currentRelay) startFeedSubscription(currentRelay);
+        });
 
         btnPublic.addEventListener('click', () => {
             btnPublic.classList.add('active');
@@ -1236,6 +1353,7 @@
                 log('log_auth_success', npub);
                 checkAppState();
                 fetchProfile(userPubKey);
+                fetchKind3Follows(userPubKey);
             } catch (error) {
                 log('log_error', error.message, 'error');
             }
@@ -1340,7 +1458,10 @@
                 
                 log('log_auth_success', npub);
                 checkAppState();
-                if (currentRelay) fetchProfile(userPubKey);
+                if (currentRelay) {
+                    fetchProfile(userPubKey);
+                    fetchKind3Follows(userPubKey);
+                }
                 
                 // Clear input for safety
                 nsecInput.value = '';
