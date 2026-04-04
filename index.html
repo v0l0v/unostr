@@ -196,6 +196,27 @@
             right: 12px; /* Center it in the thin strip */
         }
 
+        /* Follow Box Styles */
+        .follow-box {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px dashed var(--border-dim);
+            border-radius: 4px;
+        }
+
+        .follow-box input {
+            flex: 1;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-dim);
+            color: var(--accent-cyan);
+            padding: 0.4rem 0.6rem;
+            font-family: inherit;
+            font-size: 0.75rem;
+        }
+
         main {
             flex: 1;
             max-width: 900px;
@@ -748,11 +769,16 @@
             </section>
 
             <section id="feed-container" class="card hidden">
-            <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
             <div class="tabs">
                 <button id="feed-global" class="tab active" data-i18n="feed_global">GLOBAL</button>
                 <button id="feed-following" class="tab" data-i18n="feed_following">SIGUIENDO</button>
             </div>
+            
+            <div id="follow-box" class="follow-box hidden">
+                <input type="text" id="manual-npub" placeholder="npub1..." autocomplete="off">
+                <button id="add-follow-btn" class="btn" style="padding: 0.2rem 0.8rem; font-size: 0.7rem;" data-i18n="btn_follow">Seguir</button>
+            </div>
+
             <div id="feed-list"></div>
         </section>
         </main>
@@ -1235,21 +1261,58 @@
 
         const feedGlobalBtn = document.getElementById('feed-global');
         const feedFollowingBtn = document.getElementById('feed-following');
+        const followBox = document.getElementById('follow-box');
+        const addFollowBtn = document.getElementById('add-follow-btn');
+        const manualNpubInput = document.getElementById('manual-npub');
+
+        function updateFeedTabs() {
+            if (feedMode === 'following') {
+                followBox.classList.remove('hidden');
+                feedFollowingBtn.classList.add('active');
+                feedGlobalBtn.classList.remove('active');
+            } else {
+                followBox.classList.add('hidden');
+                feedGlobalBtn.classList.add('active');
+                feedFollowingBtn.classList.remove('active');
+            }
+        }
 
         feedGlobalBtn.addEventListener('click', () => {
             if (feedMode === 'global') return;
             feedMode = 'global';
-            feedGlobalBtn.classList.add('active');
-            feedFollowingBtn.classList.remove('active');
+            updateFeedTabs();
             if (currentRelay) startFeedSubscription(currentRelay);
         });
 
         feedFollowingBtn.addEventListener('click', () => {
             if (feedMode === 'following') return;
             feedMode = 'following';
-            feedFollowingBtn.classList.add('active');
-            feedGlobalBtn.classList.remove('active');
+            updateFeedTabs();
             if (currentRelay) startFeedSubscription(currentRelay);
+        });
+
+        addFollowBtn.addEventListener('click', async () => {
+            const input = manualNpubInput.value.trim();
+            if (!input) return;
+            try {
+                let pubkey = input;
+                if (input.startsWith('npub1')) {
+                    const decoded = nip19.decode(input);
+                    if (decoded.type === 'pubkey') pubkey = decoded.data;
+                }
+                
+                if (pubkey.length !== 64) throw new Error('Invalid Pubkey');
+                
+                followedPubkeys.add(pubkey);
+                localStorage.setItem('followed_pubkeys', JSON.stringify([...followedPubkeys]));
+                manualNpubInput.value = '';
+                log('log_follow_ok', input.substring(0, 12) + '...');
+                
+                if (feedMode === 'following') startFeedSubscription(currentRelay);
+                if (userPubKey) syncFollowsToRelay();
+            } catch (e) {
+                log('log_error', 'Invalid npub or pubkey', 'error');
+            }
         });
 
         btnPublic.addEventListener('click', () => {
