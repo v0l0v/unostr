@@ -1058,6 +1058,91 @@
             border-color: var(--accent-amber);
         }
 
+        /* --- INLINE PROFILE HEADER --- */
+        .profile-inline-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-inline-banner {
+            height: 120px;
+            background: linear-gradient(135deg, rgba(0,242,255,0.08), rgba(255,176,0,0.05));
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .profile-inline-header {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            padding: 0 1.25rem;
+            margin-top: -32px;
+            margin-bottom: 0.75rem;
+        }
+
+        .profile-inline-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 4px;
+            border: 3px solid var(--bg-surface);
+            background: var(--bg-base);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .profile-inline-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-inline-meta {
+            padding-bottom: 0.25rem;
+        }
+
+        .profile-inline-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+        }
+
+        .profile-inline-nip05 {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+
+        .profile-inline-bio {
+            padding: 0 1.25rem 1rem;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            line-height: 1.5;
+        }
+
+        .profile-inline-footer {
+            padding: 0.5rem 1.25rem;
+            border-top: 1px solid var(--border-dim);
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .profile-inline-footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        .profile-inline-footer a:hover {
+            text-decoration: underline;
+        }
+
         .amber { color: var(--accent-amber); }
         .dim { color: var(--text-dim); }
     </style>
@@ -1483,7 +1568,12 @@
                             log('log_profile_ok', PROFILES[pubkey].name);
 
                             if (pubkey === userPubKey) updateProfileModal();
-                            
+
+                            // Refresh inline header if this is the active profile
+                            if (feedMode === 'profile' && currentProfilePubkey === pubkey) {
+                                renderProfileHeader(pubkey);
+                            }
+
                             document.querySelectorAll(`[data-author="${pubkey}"]`).forEach(card => {
                                 if (PROFILES[pubkey].name) {
                                   card.querySelector('.event-name').textContent = PROFILES[pubkey].name;
@@ -1905,17 +1995,56 @@
                 }
                 feedMode = 'profile';
                 currentProfilePubkey = pubkey;
-                
+
                 const profile = PROFILES[pubkey];
                 manageDynamicTab('profile', pubkey, profile ? profile.name : null);
                 updateFeedTabs();
-                
+
                 if (currentRelay) startFeedSubscription(currentRelay);
+                // Always fetch fresh to ensure we have full data
+                fetchProfile(pubkey);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (err) {
                 console.error('View profile failed', err);
             }
         };
+
+        function renderProfileHeader(pubkey) {
+            // Remove existing header if any
+            const existing = feedList.querySelector('.profile-inline-card');
+            if (existing) existing.remove();
+
+            const profile = PROFILES[pubkey] || {};
+            const npub = nip19.npubEncode(pubkey);
+            const shortNpub = `${npub.substring(0,12)}...${npub.substring(npub.length-4)}`;
+
+            const card = document.createElement('div');
+            card.className = 'profile-inline-card';
+            card.innerHTML = `
+                <div class="profile-inline-banner" style="${profile.banner ? `background-image: url('${profile.banner}')` : ''}">
+                </div>
+                <div class="profile-inline-header">
+                    <div class="profile-inline-avatar">
+                        ${profile.picture
+                            ? `<img src="${profile.picture}" alt="">`
+                            : `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="color:var(--text-dim);padding:12px"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
+                        }
+                    </div>
+                    <div class="profile-inline-meta">
+                        <div class="profile-inline-name">${escapeHTML(profile.name || shortNpub)}</div>
+                        ${profile.nip05 ? `<div class="profile-inline-nip05">✓ ${escapeHTML(profile.nip05)}</div>` : ''}
+                    </div>
+                </div>
+                ${profile.about ? `<div class="profile-inline-bio">${escapeHTML(profile.about)}</div>` : ''}
+                ${(profile.website) ? `
+                <div class="profile-inline-footer">
+                    ${profile.website ? `<a href="${escapeHTML(profile.website)}" target="_blank" rel="noopener">🌐 ${escapeHTML(profile.website)}</a>` : ''}
+                </div>` : ''}
+            `;
+
+            // Insert as very first child
+            feedList.insertBefore(card, feedList.firstChild);
+        }
 
         function manageDynamicTab(type, id, labelHint) {
             const tabId = type === 'profile' ? 'feed-profile-tab' : 'feed-event-tab';
@@ -2180,7 +2309,12 @@
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
             feedList.innerHTML = '';
-            
+
+            // Inject profile header card at the top when browsing a profile
+            if (feedMode === 'profile' && currentProfilePubkey) {
+                renderProfileHeader(currentProfilePubkey);
+            }
+
             let filter = { kinds: [1], limit: 40 };
             if (feedMode === 'following') {
                 if (followedPubkeys.size === 0) {
