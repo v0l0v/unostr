@@ -559,6 +559,31 @@
             border-color: var(--accent-cyan);
         }
 
+        .json-content {
+            font-family: var(--font-main);
+            background: #000;
+            color: var(--accent-green);
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-dim);
+            font-size: 0.8rem;
+            white-space: pre;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+
+        .json-prefix {
+            font-size: 0.7rem;
+            color: var(--accent-amber);
+            font-weight: 800;
+            margin-bottom: 0.2rem;
+            display: block;
+            padding-left: 50px;
+        }
+
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -1062,6 +1087,30 @@
             return new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
+        function renderContent(content) {
+            const trimmed = content.trim();
+            
+            // Caso 1: JSON Puro
+            try {
+                if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                    const obj = JSON.parse(trimmed);
+                    return `<div class="json-content">${escapeHTML(JSON.stringify(obj, null, 4))}</div>`;
+                }
+            } catch (e) {}
+
+            // Caso 2: Texto con Prefijo seguido de JSON (ej: Protocolos tipo Xitchat o firmas de agentes AI)
+            const match = content.match(/^([^{]+)?({.*})$/s);
+            if (match && match[2]) {
+                try {
+                    const obj = JSON.parse(match[2]);
+                    const prefix = match[1] ? `<span class="json-prefix">${escapeHTML(match[1])}</span>` : '';
+                    return `${prefix}<div class="json-content" style="margin-left: 50px;">${escapeHTML(JSON.stringify(obj, null, 4))}</div>`;
+                } catch (e) {}
+            }
+
+            return `<div class="event-content">${escapeHTML(content)}</div>`;
+        }
+
         function createEventCard(event) {
             const npub = nip19.npubEncode(event.pubkey);
             const shortNpub = `${npub.substring(0, 8)}...${npub.substring(npub.length - 4)}`;
@@ -1094,7 +1143,7 @@
                     <button class="btn-translate" title="Traducir al Español">🌐</button>
                     <button class="btn-inspect" title="Ver contenido original (JSON)">[JSON]</button>
                 </div>
-                <div class="event-content">${escapeHTML(event.content)}</div>
+                ${renderContent(event.content)}
                 <div class="translation-block hidden"></div>
                 <div class="inspector-panel">${JSON.stringify(event, null, 4)}</div>
             `;
@@ -1178,8 +1227,8 @@
                     
                     if (data && data[0]) {
                         const translatedText = data[0].map(s => s[0]).join('');
-                        const contentDiv = card.querySelector('.event-content');
-                        contentDiv.classList.add('attenuated');
+                        const contentDiv = card.querySelector('.event-content, .json-content');
+                        if (contentDiv) contentDiv.classList.add('attenuated');
                         translationBlock.textContent = translatedText;
                         translationBlock.classList.remove('hidden');
                         btnTranslate.textContent = 'ES';
