@@ -2134,7 +2134,7 @@
             if (currentSub) currentSub.close();
             feedList.innerHTML = '';
             
-            const filter = { kinds: [1], limit: 40 };
+            let filter = { kinds: [1], limit: 40 };
             if (feedMode === 'following') {
                 if (followedPubkeys.size === 0) {
                     feedList.innerHTML = '<div class="dim" style="padding: 2rem; text-align: center;">No sigues a nadie todavía. ¡Explora el Global!</div>';
@@ -2144,8 +2144,9 @@
             } else if (feedMode === 'profile' && currentProfilePubkey) {
                 filter.authors = [currentProfilePubkey];
             } else if (feedMode === 'event' && currentEventId) {
-                filter = { ids: [currentEventId], limit: 1 };
+                filter = { kinds: [1], ids: [currentEventId], limit: 1 };
             }
+
 
             log('log_sub_start', `${relay.url} [Mode: ${feedMode}]`);
 
