@@ -452,7 +452,8 @@
             font-size: 0.95rem;
             color: var(--text-primary);
             white-space: pre-wrap;
-            word-break: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word; /* Fallback for older browsers */
             padding-left: 50px;
         }
 
@@ -503,6 +504,24 @@
             border-color: var(--border-dim);
             color: var(--text-dim);
             background: transparent;
+        }
+
+        .inspector-panel {
+            display: none;
+            background: #000;
+            color: var(--accent-green);
+            font-family: var(--font-main);
+            font-size: 0.7rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid var(--border-dim);
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .inspector-panel.visible {
+            display: block;
         }
 
         .status-badge {
@@ -557,6 +576,8 @@
             font-size: 0.85rem;
             color: var(--text-primary);
             white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
             margin-bottom: 1rem;
         }
 
