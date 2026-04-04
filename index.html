@@ -1377,7 +1377,11 @@
         const toggleConnBtn = document.getElementById('toggle-conn-btn');
 
         toggleConnBtn.addEventListener('click', () => {
+            const isHidden = connectionMenu.classList.contains('hidden');
             connectionMenu.classList.toggle('hidden');
+            if (isHidden) {
+                connectionMenu.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
 
         function updateProfileModal() {
