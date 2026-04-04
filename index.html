@@ -166,6 +166,36 @@
 
         .sidebar.minimized:hover::after { opacity: 1; }
 
+        .sidebar-toggle {
+            position: absolute;
+            top: 1rem;
+            right: -12px;
+            width: 24px;
+            height: 24px;
+            background: var(--bg-surface);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 0.8rem;
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+            transition: var(--transition);
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-base);
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+
+        .sidebar.minimized .sidebar-toggle {
+            right: 12px; /* Center it in the thin strip */
+        }
+
         main {
             flex: 1;
             max-width: 900px;
@@ -676,6 +706,7 @@
 
     <div class="app-layout">
         <aside id="sidebar" class="sidebar">
+            <button id="sidebar-toggle" class="sidebar-toggle" title="Plegar/Desplegar [«]">«</button>
             <section class="card" style="border:none; padding:0; background:transparent;">
                 <div class="section-title" data-i18n="section_conn">Configuración de Conexión</div>
                 <div class="tabs">
@@ -1134,7 +1165,7 @@
                 log('log_connected', currentRelay.url);
                 
                 // Sidebar auto-minimize
-                sidebar.classList.add('minimized');
+                toggleSidebar(true);
 
                 // NIP-42 Authentication handler
                 currentRelay.onauth = async (challenge) => {
@@ -1216,11 +1247,28 @@
         const closeProfileBtn = document.getElementById('close-profile-btn');
         const logoutBtn = document.getElementById('logout-btn');
         const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
 
-        // Sidebar manual toggle (click while minimized)
+        function toggleSidebar(forceMinimize) {
+            const isMinimized = typeof forceMinimize === 'boolean' ? !forceMinimize : sidebar.classList.contains('minimized');
+            if (isMinimized) {
+                sidebar.classList.remove('minimized');
+                sidebarToggle.textContent = '«';
+            } else {
+                sidebar.classList.add('minimized');
+                sidebarToggle.textContent = '»';
+            }
+        }
+
+        sidebarToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSidebar();
+        });
+
+        // Sidebar manual toggle (click while minimized, for convenience)
         sidebar.addEventListener('click', (e) => {
             if (sidebar.classList.contains('minimized')) {
-                sidebar.classList.remove('minimized');
+                toggleSidebar(false);
             }
         });
 
