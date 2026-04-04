@@ -478,6 +478,76 @@
         .status-online { color: var(--accent-green); border-color: rgba(0, 255, 65, 0.2); background: rgba(0, 255, 65, 0.05); }
         .status-offline { color: var(--accent-red); border-color: rgba(255, 62, 62, 0.2); background: rgba(255, 62, 62, 0.05); }
 
+        #profile-badge { cursor: pointer; transition: var(--transition); }
+        #profile-badge:hover { border-color: var(--accent-cyan); box-shadow: 0 0 5px var(--accent-cyan); }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .profile-card {
+            max-width: 500px;
+            width: 90%;
+            padding: 0;
+            margin-top: 0;
+            overflow: hidden;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        }
+
+        .profile-banner {
+            height: 120px;
+            background: var(--bg-hover);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .profile-header-main {
+            padding: 0 1.5rem;
+            margin-top: -40px;
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-picture {
+            width: 80px;
+            height: 80px;
+            background: var(--bg-surface);
+            border: 3px solid var(--bg-base);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .profile-picture img { width: 100%; height: 100%; object-fit: cover; }
+
+        .profile-names h2 { font-size: 1.1rem; color: var(--accent-cyan); }
+
+        .profile-about {
+            padding: 0 1.5rem;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            margin-bottom: 1rem;
+        }
+
+        .profile-extra {
+            padding: 0 1.5rem 1.5rem;
+            font-size: 0.75rem;
+            border-top: 1px solid var(--border-dim);
+            padding-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
         /* Manual Login specific stylings */
         #manual-login-area {
             margin-top: 1rem;
@@ -528,11 +598,11 @@
             <div class="section-title" data-i18n="login_manual_title">Autenticación Manual</div>
             <p class="caution-text" data-i18n="caution_nsec">[!] PRECAUCIÓN: No compartas tu nsec en sitios no confiables. Se borrará al recargar.</p>
             <div class="input-wrapper">
-                <label for="nsec-input">NSEC_KEY</label>
-                <input type="password" id="nsec-input" placeholder="nsec1..." autocomplete="off">
+                <label for="nsec-input">PRIVATE_KEY [HEX_o_NSEC]</label>
+                <input type="password" id="nsec-input" placeholder="64_caracteres_hex_o_nsec1..." autocomplete="off">
             </div>
             <div class="btn-group">
-                <button id="manual-auth-btn" class="btn primary" data-i18n="btn_authenticate">Autenticar_Criptografía</button>
+                <button id="manual-auth-btn" class="btn primary" data-i18n="btn_authenticate">Autenticar_Identidad</button>
             </div>
         </section>
 
@@ -565,6 +635,28 @@
             <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
             <div id="feed-list"></div>
         </section>
+
+        <!-- Profile Inspector Modal -->
+        <div id="profile-modal" class="modal-overlay hidden">
+            <div class="modal-content card profile-card">
+                <div id="profile-banner" class="profile-banner"></div>
+                <div class="profile-header-main">
+                    <div id="profile-picture" class="profile-picture"></div>
+                    <div class="profile-names">
+                        <h2 id="profile-name-full">---</h2>
+                        <span id="profile-nip05" class="dim"></span>
+                    </div>
+                </div>
+                <div id="profile-about" class="profile-about"></div>
+                <div id="profile-extra-area" class="profile-extra">
+                    <span id="profile-website" class="dim"></span>
+                </div>
+                <div class="btn-group" style="padding: 1rem 1.5rem; background: rgba(0,0,0,0.2); border-top: 1px solid var(--border-dim);">
+                    <button id="logout-btn" class="btn" style="border-color: var(--accent-red); color: var(--accent-red);" data-i18n="btn_logout">Cerrar_Sesión</button>
+                    <button id="close-profile-btn" class="btn" data-i18n="btn_close">Cerrar</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer>
@@ -620,7 +712,9 @@
                 log_auth_nip42_start: 'NIP-42 AUTH challenge received. Authenticating...',
                 log_auth_nip42_ok: 'NIP-42 Authentication sent successfully.',
                 log_react_start: 'Signing reaction Kind 7...',
-                log_react_ok: 'Reaction sent successfully.'
+                log_react_ok: 'Reaction sent successfully.',
+                btn_logout: 'Logout',
+                btn_close: 'Close'
             },
             es: {
                 conn_not_connected: 'NO_CONECTADO',
@@ -661,7 +755,9 @@
                 log_auth_nip42_start: 'Desafío NIP-42 (AUTH) recibido. Autenticando...',
                 log_auth_nip42_ok: 'Autenticación NIP-42 enviada con éxito.',
                 log_react_start: 'Firmando reacción Tipo 7...',
-                log_react_ok: 'Reacción enviada con éxito.'
+                log_react_ok: 'Reacción enviada con éxito.',
+                btn_logout: 'Cerrar Sesión',
+                btn_close: 'Cerrar'
             }
         };
 
@@ -803,9 +899,15 @@
                             PROFILES[pubkey] = {
                                 name: data.display_name || data.name || data.username,
                                 picture: data.picture,
+                                about: data.about,
+                                banner: data.banner,
+                                website: data.website,
+                                nip05: data.nip05,
                                 loading: false
                             };
                             log('log_profile_ok', PROFILES[pubkey].name);
+
+                            if (pubkey === userPubKey) updateProfileModal();
                             
                             document.querySelectorAll(`[data-author="${pubkey}"]`).forEach(card => {
                                 if (PROFILES[pubkey].name) card.querySelector('.event-name').textContent = PROFILES[pubkey].name;
@@ -1042,6 +1144,37 @@
         });
 
         // Manual Login Handlers
+        manualArea.classList.add('hidden');
+        const profileModal = document.getElementById('profile-modal');
+        const closeProfileBtn = document.getElementById('close-profile-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        function updateProfileModal() {
+            if (!userPubKey || !PROFILES[userPubKey]) return;
+            const p = PROFILES[userPubKey];
+            document.getElementById('profile-name-full').textContent = p.name || 'Anonymous';
+            document.getElementById('profile-nip05').textContent = p.nip05 || '';
+            document.getElementById('profile-about').textContent = p.about || '';
+            document.getElementById('profile-website').textContent = p.website || '';
+            
+            const picDiv = document.getElementById('profile-picture');
+            picDiv.innerHTML = p.picture ? `<img src="${p.picture}" alt="">` : '';
+            
+            const bannerDiv = document.getElementById('profile-banner');
+            bannerDiv.style.backgroundImage = p.banner ? `url(${p.banner})` : 'none';
+        }
+
+        profileBadge.addEventListener('click', () => {
+            updateProfileModal();
+            profileModal.classList.remove('hidden');
+        });
+
+        closeProfileBtn.addEventListener('click', () => profileModal.classList.add('hidden'));
+
+        logoutBtn.addEventListener('click', () => {
+            location.reload(); // Simple logout by clearing state
+        });
+
         manualToggleBtn.addEventListener('click', () => {
             manualArea.classList.toggle('hidden');
             nsecInput.focus();
@@ -1055,12 +1188,15 @@
             try {
                 let hexSk;
                 if (val.startsWith('nsec1')) {
+                    // Bech32 format (NSEC)
                     const decoded = nip19.decode(val);
-                    if (decoded.type !== 'nsec') throw new Error('Invalid NSEC');
+                    if (decoded.type !== 'nsec') throw new Error('Invalid NSEC format.');
                     hexSk = decoded.data;
-                } else {
-                    // Try as hex
+                } else if (val.length === 64 && /^[0-9a-fA-F]+$/.test(val)) {
+                    // HEX format (64 chars)
                     hexSk = new Uint8Array(val.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+                } else {
+                    throw new Error('Formato no reconocido. Usa nsec1... o 64 caracteres Hex.');
                 }
 
                 userSecretKey = hexSk;
@@ -1081,7 +1217,7 @@
                 nsecInput.value = '';
 
             } catch (error) {
-                log('log_error', 'Autenticación manual fallida: ' + error.message, 'error');
+                log('log_error', 'Fallo de identidad: ' + error.message, 'error');
             }
         });
 
