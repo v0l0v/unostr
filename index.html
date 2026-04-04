@@ -684,6 +684,19 @@
             padding-left: 50px;
         }
 
+        .npub-link {
+            color: var(--accent-cyan);
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .npub-link:hover {
+            text-decoration: underline;
+            color: var(--accent-amber);
+            text-shadow: 0 0 5px rgba(255, 176, 0, 0.4);
+        }
+
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -1259,7 +1272,15 @@
                 } catch (e) {}
             }
 
-            return `<div class="event-content">${escapeHTML(content)}</div>`;
+            // Caso 3: Texto normal
+            let html = escapeHTML(content);
+            
+            // Auto-link npubs
+            html = html.replace(/(npub1[a-z0-9]{58})/gi, (match) => {
+                return `<span class="npub-link" onclick="viewProfile('${match}')">${match.substring(0, 12)}...</span>`;
+            });
+
+            return `<div class="event-content">${html}</div>`;
         }
 
         function createEventCard(event) {
@@ -1270,7 +1291,7 @@
             const displayName = profile.name || shortNpub;
             const isFollowing = followedPubkeys.has(event.pubkey);
             
-            const mediaRegex = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|webp|gif))/gi;
+            const mediaRegex = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|webp|gif|mp4|webm|mov))/gi;
             const mediaUrls = event.content.match(mediaRegex) || [];
 
             const card = document.createElement('div');
@@ -1284,7 +1305,7 @@
                     <div class="event-info">
                         <span class="event-name">${displayName}</span>
                         <div class="event-meta">
-                            <span class="event-npub dim" title="${npub}">${shortNpub}</span>
+                            <span class="event-npub dim npub-link" onclick="viewProfile('${npub}')" title="${npub}">${shortNpub}</span>
                             <span class="event-time">${formatTime(event.created_at)}</span>
                         </div>
                     </div>
@@ -1310,7 +1331,13 @@
                 btnMedia.addEventListener('click', () => {
                     const isHidden = preview.classList.contains('hidden');
                     if (isHidden) {
-                        preview.innerHTML = mediaUrls.map(url => `<img src="${url}" alt="Media [👁️]" loading="lazy">`).join('');
+                        preview.innerHTML = mediaUrls.map(url => {
+                            const isVideo = url.match(/\.(mp4|webm|mov)$/i);
+                            if (isVideo) {
+                                return `<video src="${url}" controls style="max-width: 100%; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"></video>`;
+                            }
+                            return `<img src="${url}" alt="Media [👁️]" loading="lazy">`;
+                        }).join('');
                         preview.classList.remove('hidden');
                         btnMedia.classList.add('active');
                     } else {
