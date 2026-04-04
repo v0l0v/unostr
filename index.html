@@ -559,20 +559,75 @@
             border-color: var(--accent-cyan);
         }
 
-        .json-content {
-            font-family: var(--font-main);
-            background: #000;
-            color: var(--accent-green);
-            padding: 0.75rem;
-            margin-top: 0.5rem;
-            border-radius: 4px;
+        .json-content.hidden { display: none; }
+
+        .interpreted-view {
+            background: rgba(255, 176, 0, 0.03);
             border: 1px solid var(--border-dim);
+            border-left: 3px solid var(--accent-amber);
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 0.75rem;
+            margin-left: 50px;
+            position: relative;
+        }
+
+        .interpreted-header {
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--accent-amber);
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .data-table {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .data-row {
+            display: flex;
             font-size: 0.8rem;
-            white-space: pre;
-            overflow-x: auto;
-            max-height: 500px;
-            overflow-y: auto;
-            scrollbar-width: thin;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            padding-bottom: 0.2rem;
+        }
+
+        .data-key {
+            width: 130px;
+            color: var(--text-dim);
+            font-weight: 700;
+            flex-shrink: 0;
+            text-transform: lowercase;
+        }
+
+        .data-val {
+            color: var(--text-primary);
+            word-break: break-all;
+            font-family: var(--font-main);
+        }
+
+        .btn-raw {
+            background: transparent;
+            border: 1px dashed var(--border-dim);
+            color: var(--text-dim);
+            font-size: 0.6rem;
+            padding: 2px 8px;
+            cursor: pointer;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            transition: var(--transition);
+        }
+
+        .btn-raw:hover {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            background: rgba(0, 242, 255, 0.05);
         }
 
         .json-prefix {
@@ -1089,22 +1144,73 @@
 
         function renderContent(content) {
             const trimmed = content.trim();
-            
-            // Caso 1: JSON Puro
+            const NOISE = ['sig', 'id', 'pk', 'sig2', 'pk2', 'ots', 'created_at', 'pubkey', 'seen'];
+
+            function deepParse(obj) {
+                if (typeof obj === 'string') {
+                    try {
+                        const parsed = JSON.parse(obj);
+                        return deepParse(parsed);
+                    } catch (e) { return obj; }
+                }
+                if (typeof obj === 'object' && obj !== null) {
+                    const newObj = Array.isArray(obj) ? [] : {};
+                    for (let key in obj) {
+                        newObj[key] = deepParse(obj[key]);
+                    }
+                    return newObj;
+                }
+                return obj;
+            }
+
+            function generateInterpretedUI(obj, rawPrefix = '') {
+                const type = obj.type || obj.kind || 'DATA_OBJECT';
+                let rows = '';
+                
+                // Recoger entradas válidas (no ruido)
+                for (let [key, val] of Object.entries(obj)) {
+                    if (NOISE.includes(key)) continue;
+                    let displayVal = val;
+                    if (typeof val === 'object') displayVal = JSON.stringify(val, null, 2);
+                    
+                    rows += `
+                        <div class="data-row">
+                            <span class="data-key">${key}</span>
+                            <span class="data-val">${escapeHTML(String(displayVal))}</span>
+                        </div>`;
+                }
+
+                const rawContent = JSON.stringify(obj, null, 4);
+                const prefixHtml = rawPrefix ? `<span class="json-prefix">${escapeHTML(rawPrefix)}</span>` : '';
+
+                return `
+                    ${prefixHtml}
+                    <div class="interpreted-view">
+                        <div class="interpreted-header">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                            ${type.toUpperCase()}
+                        </div>
+                        <div class="data-table">${rows}</div>
+                        <button class="btn-raw" onclick="this.nextElementSibling.classList.toggle('hidden')">DIAGNÓSTICO_TÉCNICO [RAW]</button>
+                        <div class="json-content hidden" style="margin-top:0.5rem; white-space: pre;">${escapeHTML(rawContent)}</div>
+                    </div>
+                `;
+            }
+
+            // Intento 1: JSON Puro
             try {
                 if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-                    const obj = JSON.parse(trimmed);
-                    return `<div class="json-content">${escapeHTML(JSON.stringify(obj, null, 4))}</div>`;
+                    const parsed = deepParse(trimmed);
+                    return generateInterpretedUI(parsed);
                 }
             } catch (e) {}
 
-            // Caso 2: Texto con Prefijo seguido de JSON (ej: Protocolos tipo Xitchat o firmas de agentes AI)
+            // Intento 2: Prefijo + JSON
             const match = content.match(/^([^{]+)?({.*})$/s);
             if (match && match[2]) {
                 try {
-                    const obj = JSON.parse(match[2]);
-                    const prefix = match[1] ? `<span class="json-prefix">${escapeHTML(match[1])}</span>` : '';
-                    return `${prefix}<div class="json-content" style="margin-left: 50px;">${escapeHTML(JSON.stringify(obj, null, 4))}</div>`;
+                    const parsed = deepParse(match[2]);
+                    return generateInterpretedUI(parsed, match[1]);
                 } catch (e) {}
             }
 
