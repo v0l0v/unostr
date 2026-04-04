@@ -561,6 +561,20 @@
 
         .json-content.hidden { display: none; }
 
+        .tab-close {
+            margin-left: 8px;
+            font-size: 0.9rem;
+            opacity: 0.5;
+            transition: var(--transition);
+            font-weight: 900;
+        }
+
+        .tab-close:hover {
+            opacity: 1;
+            color: var(--accent-red);
+            transform: scale(1.2);
+        }
+
         .interpreted-view {
             background: rgba(255, 176, 0, 0.03);
             border: 1px solid var(--border-dim);
@@ -917,7 +931,7 @@
         </section>
 
         <section id="feed-container" class="card hidden">
-            <div class="tabs">
+            <div id="feed-tabs-container" class="tabs">
                 <button id="feed-global" class="tab active" data-i18n="feed_global">GLOBAL</button>
                 <button id="feed-following" class="tab" data-i18n="feed_following">SIGUIENDO</button>
             </div>
@@ -1198,7 +1212,13 @@
                             if (pubkey === userPubKey) updateProfileModal();
                             
                             document.querySelectorAll(`[data-author="${pubkey}"]`).forEach(card => {
-                                if (PROFILES[pubkey].name) card.querySelector('.event-name').textContent = PROFILES[pubkey].name;
+                                if (PROFILES[pubkey].name) {
+                                  card.querySelector('.event-name').textContent = PROFILES[pubkey].name;
+                                  // Update dynamic tab if it's the current profile
+                                  if (feedMode === 'profile' && currentProfilePubkey === pubkey) {
+                                      manageDynamicTab('profile', pubkey, PROFILES[pubkey].name);
+                                  }
+                                }
                                 if (PROFILES[pubkey].picture) {
                                     const avatarDiv = card.querySelector('.event-avatar');
                                     avatarDiv.innerHTML = `<img src="${PROFILES[pubkey].picture}" alt="">`;
@@ -1504,10 +1524,9 @@
                 feedMode = 'profile';
                 currentProfilePubkey = pubkey;
                 
-                // Unset tabs
-                feedGlobalBtn.classList.remove('active');
-                feedFollowingBtn.classList.remove('active');
-                followBox.classList.add('hidden');
+                const profile = PROFILES[pubkey];
+                manageDynamicTab('profile', pubkey, profile ? profile.name : null);
+                updateFeedTabs();
                 
                 if (currentRelay) startFeedSubscription(currentRelay);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1516,22 +1535,54 @@
             }
         };
 
+        function manageDynamicTab(type, id, labelHint) {
+            let tab = document.getElementById('feed-dynamic-tab');
+            if (!tab) {
+                tab = document.createElement('button');
+                tab.id = 'feed-dynamic-tab';
+                tab.className = 'tab';
+                document.getElementById('feed-tabs-container').appendChild(tab);
+            }
+            
+            // Re-bind click according to type
+            tab.onclick = () => {
+                if (type === 'profile') viewProfile(id);
+                else viewEvent(id);
+            };
+            
+            if (type === 'profile') {
+                const label = labelHint || id.substring(0, 8);
+                tab.innerHTML = `<span class="amber" style="font-size:0.6rem">@</span>${label} <span class="tab-close" onclick="closeDynamicTab(event)">×</span>`;
+            } else {
+                const label = id.substring(0, 8);
+                tab.innerHTML = `<span class="amber" style="font-size:0.6rem">ID:</span>${label} <span class="tab-close" onclick="closeDynamicTab(event)">×</span>`;
+            }
+        }
+
+        window.closeDynamicTab = (e) => {
+            if (e) e.stopPropagation();
+            const tab = document.getElementById('feed-dynamic-tab');
+            if (tab) tab.remove();
+            
+            feedMode = 'global';
+            updateFeedTabs();
+            if (currentRelay) startFeedSubscription(currentRelay);
+        };
+
         window.viewEvent = (bech32Id) => {
             try {
                 let id = bech32Id;
                 if (id.startsWith('nostr:')) id = id.substring(6);
                 const decoded = nip19.decode(id);
-                if (decoded.type === 'note') {
-                    currentEventId = decoded.data;
-                } else if (decoded.type === 'nevent') {
-                    currentEventId = decoded.data.id;
-                }
-                feedMode = 'event';
+                let hexId = id;
+                if (decoded.type === 'note') hexId = decoded.data;
+                else if (decoded.type === 'nevent') hexId = decoded.data.id;
                 
-                // Unset tabs
-                feedGlobalBtn.classList.remove('active');
-                feedFollowingBtn.classList.remove('active');
-                followBox.classList.add('hidden');
+                feedMode = 'event';
+                currentEventId = hexId;
+                
+                manageDynamicTab('event', id); // Use original Bech32 for tab label
+                updateFeedTabs();
                 
                 if (currentRelay) startFeedSubscription(currentRelay);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1620,19 +1671,33 @@
         const manualNpubInput = document.getElementById('manual-npub');
 
         function updateFeedTabs() {
+            const dynamicTab = document.getElementById('feed-dynamic-tab');
             if (feedMode === 'following') {
                 followBox.classList.remove('hidden');
                 feedFollowingBtn.classList.add('active');
                 feedGlobalBtn.classList.remove('active');
+                if (dynamicTab) dynamicTab.classList.remove('active');
             } else if (feedMode === 'global') {
                 followBox.classList.add('hidden');
                 feedGlobalBtn.classList.add('active');
                 feedFollowingBtn.classList.remove('active');
-            } else {
-                // Profile mode
+                if (dynamicTab) dynamicTab.classList.remove('active');
+            } else if (feedMode === 'profile') {
                 followBox.classList.add('hidden');
                 feedGlobalBtn.classList.remove('active');
                 feedFollowingBtn.classList.remove('active');
+                if (dynamicTab) dynamicTab.classList.add('active');
+            } else if (feedMode === 'event') {
+                followBox.classList.add('hidden');
+                feedGlobalBtn.classList.remove('active');
+                feedFollowingBtn.classList.remove('active');
+                if (dynamicTab) dynamicTab.classList.add('active');
+            } else {
+                // Event mode or other
+                followBox.classList.add('hidden');
+                feedGlobalBtn.classList.remove('active');
+                feedFollowingBtn.classList.remove('active');
+                if (dynamicTab) dynamicTab.classList.remove('active');
             }
         }
 
