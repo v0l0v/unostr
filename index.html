@@ -1101,6 +1101,38 @@
             <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Firmar y Transmitir</button>
         </section>
 
+        </section>
+
+        <!-- EVENT CREATOR (Organizer Mode Only) -->
+        <section id="event-creator-area" class="card hidden">
+            <div class="section-title">📦 CONSTRUCTOR_DE_EVENTOS_GRUPALES</div>
+            <div class="input-wrapper">
+                <input type="text" id="event-title-input" placeholder="TÍTULO DEL EVENTO (Ej: Cena Cypherpunk Barcelona)">
+            </div>
+            <div class="input-wrapper">
+                <textarea id="event-desc-input" placeholder="DESCRIPCIÓN DETALLADA (Lugar, hora, qué incluye...)" rows="3"></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <div class="input-wrapper">
+                    <label>PRECIO [SATS]</label>
+                    <input type="number" id="event-price-input" placeholder="50000">
+                </div>
+                <div class="input-wrapper">
+                    <label>MÍNIMO [PAX]</label>
+                    <input type="number" id="event-min-input" placeholder="10">
+                </div>
+                <div class="input-wrapper">
+                    <label>MÁXIMO [PAX]</label>
+                    <input type="number" id="event-max-input" placeholder="50">
+                </div>
+            </div>
+            <input type="hidden" id="event-id-hidden">
+            <div class="btn-group" style="margin-top: 1rem;">
+                <button id="publish-event-btn" class="btn primary" style="width: 100%;">FIRM_Y_PUBLICAR_EVENTO (KIND_31924)</button>
+                <button id="cancel-event-btn" class="btn" onclick="toggleOrganizerMode(false)">CANCELAR</button>
+            </div>
+        </section>
+
         <section id="feed-container" class="card hidden">
             <div id="feed-tabs-container" class="tabs">
                 <button id="feed-global" class="tab active" data-i18n="feed_global">GLOBAL</button>
@@ -1622,6 +1654,7 @@
                         ${isFollowing ? '★' : '☆'}
                     </button>
                     <button class="btn-react" ${!userPubKey ? 'disabled' : ''} title="Reaccionar (+)">⚡</button>
+                    ${event.pubkey === userPubKey ? `<button class="btn-edit-event" title="Editar este evento">⚙️</button>` : ''}
                     <button class="btn-translate" title="Traducir al Español">🌐</button>
                     <button class="btn-inspect" title="Ver contenido original (JSON)">[JSON]</button>
                 </div>
@@ -1665,6 +1698,11 @@
                     log('log_follow_ok', shortNpub);
                 }
                 localStorage.setItem('followed_pubkeys', JSON.stringify([...followedPubkeys]));
+                
+                // Show Organizer Mode if it's the current user profile (simple check)
+                if (userPubKey) {
+                    organizerArea.classList.remove('hidden');
+                }
                 
                     // Update all instances of follow button for this pubkey
                     document.querySelectorAll(`[data-author="${pub}"] .btn-follow-toggle`).forEach(btn => {
@@ -1762,6 +1800,30 @@
 
             if (!profile.name) fetchProfile(event.pubkey);
 
+            // Logic to Edit Event
+            const btnEdit = card.querySelector('.btn-edit-event');
+            if (btnEdit) {
+                btnEdit.addEventListener('click', () => {
+                    try {
+                        const data = JSON.parse(event.content);
+                        if (data.type === "EVENT_MARKETPLACE") {
+                            document.getElementById('event-title-input').value = data.title;
+                            document.getElementById('event-desc-input').value = data.description;
+                            document.getElementById('event-price-input').value = data.price;
+                            document.getElementById('event-min-input').value = data.min;
+                            document.getElementById('event-max-input').value = data.max;
+                            document.getElementById('event-id-hidden').value = data.id;
+                            
+                            toggleOrganizerMode(true);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            log('log_info', 'Editando evento existente...');
+                        }
+                    } catch (e) {
+                        log('log_error', 'No se puede editar este formato', 'error');
+                    }
+                });
+            }
+
             return card;
         }
 
@@ -1822,6 +1884,78 @@
 
         // --- MARKETPLACE LOGIC ---
         let currentActiveEvent = null;
+        let organizerMode = false;
+
+        const organizerArea = document.getElementById('organizer-area');
+        const organizerModeBtn = document.getElementById('organizer-mode-btn');
+        const eventCreatorArea = document.getElementById('event-creator-area');
+
+        window.toggleOrganizerMode = (force) => {
+            organizerMode = typeof force === 'boolean' ? force : !organizerMode;
+            organizerModeBtn.classList.toggle('active', organizerMode);
+            organizerModeBtn.textContent = organizerMode ? '⚙️ MODO_ORGANIZADOR [ON]' : '⚙️ MODO_ORGANIZADOR [OFF]';
+            eventCreatorArea.classList.toggle('hidden', !organizerMode);
+            if (!organizerMode) {
+                // Clear form
+                document.getElementById('event-title-input').value = '';
+                document.getElementById('event-desc-input').value = '';
+                document.getElementById('event-price-input').value = '';
+                document.getElementById('event-min-input').value = '';
+                document.getElementById('event-max-input').value = '';
+                document.getElementById('event-id-hidden').value = '';
+            }
+        };
+
+        organizerModeBtn.onclick = () => toggleOrganizerMode();
+
+        document.getElementById('publish-event-btn').onclick = async () => {
+            if (!userPubKey) return log('log_error', 'Debes estar autenticado para publicar eventos', 'error');
+            
+            const title = document.getElementById('event-title-input').value;
+            const desc = document.getElementById('event-desc-input').value;
+            const price = parseInt(document.getElementById('event-price-input').value);
+            const min = parseInt(document.getElementById('event-min-input').value);
+            const max = parseInt(document.getElementById('event-max-input').value);
+            let existingId = document.getElementById('event-id-hidden').value;
+            
+            if (!title || !price || !min) return log('log_error', 'Faltan campos obligatorios', 'warn');
+            
+            const eventId = existingId || 'ev-' + Math.random().toString(36).substring(2, 7);
+            
+            const marketplaceData = {
+                type: "EVENT_MARKETPLACE",
+                id: eventId,
+                title,
+                description: desc,
+                price,
+                min,
+                max
+            };
+
+            const event = {
+                kind: 1, // Using Kind 1 for now for simplicity, can change to 31924
+                created_at: Math.floor(Date.now() / 1000),
+                content: JSON.stringify(marketplaceData),
+                tags: [
+                    ['d', eventId], // NIP-33 style identifier
+                    ['t', 'event-marketplace']
+                ]
+            };
+
+            try {
+                let signed;
+                if (userSecretKey) signed = finalizeEvent(event, userSecretKey);
+                else if (window.nostr) signed = await window.nostr.signEvent(event);
+                
+                if (signed) {
+                    await currentRelay.publish(signed);
+                    log('log_info', `¡Evento "${title}" publicado con éxito!`, 'success');
+                    toggleOrganizerMode(false);
+                }
+            } catch (err) {
+                log('log_error', 'Error al publicar: ' + err.message, 'error');
+            }
+        };
 
         window.openPaymentModal = (id, price, title, desc) => {
             currentActiveEvent = { id, price, title, desc };
