@@ -712,6 +712,19 @@
             text-shadow: 0 0 5px rgba(255, 176, 0, 0.4);
         }
 
+        .event-link {
+            color: var(--accent-amber);
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .event-link:hover {
+            text-decoration: underline;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 5px rgba(0, 242, 255, 0.4);
+        }
+
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -1069,8 +1082,9 @@
         let currentSub = null;
         let currentLang = 'es';
         let followedPubkeys = new Set(JSON.parse(localStorage.getItem('followed_pubkeys') || '[]'));
-        let feedMode = 'global'; // 'global', 'following', 'profile'
+        let feedMode = 'global'; // 'global', 'following', 'profile', 'event'
         let currentProfilePubkey = null;
+        let currentEventId = null;
 
         const PROFILES = {}; 
 
@@ -1293,7 +1307,12 @@
             
             // Auto-link npubs
             html = html.replace(/(npub1[a-z0-9]{58})/gi, (match) => {
-                return `<span class="npub-link" onclick="viewProfile('${match}')">${match.substring(0, 12)}...</span>`;
+                return `<span class="npub-link" onclick="viewProfile('${match}')" title="${match}">${match.substring(0, 12)}...</span>`;
+            });
+            
+            // Auto-link events (note1/nevent1)
+            html = html.replace(/(?:nostr:)?((?:nevent1|note1)[a-z0-9]+)/gi, (match, id) => {
+                return `<span class="event-link" onclick="viewEvent('${id}')" title="${id}">${id.substring(0, 12)}...</span>`;
             });
 
             return `<div class="event-content">${html}</div>`;
@@ -1497,6 +1516,30 @@
             }
         };
 
+        window.viewEvent = (bech32Id) => {
+            try {
+                let id = bech32Id;
+                if (id.startsWith('nostr:')) id = id.substring(6);
+                const decoded = nip19.decode(id);
+                if (decoded.type === 'note') {
+                    currentEventId = decoded.data;
+                } else if (decoded.type === 'nevent') {
+                    currentEventId = decoded.data.id;
+                }
+                feedMode = 'event';
+                
+                // Unset tabs
+                feedGlobalBtn.classList.remove('active');
+                feedFollowingBtn.classList.remove('active');
+                followBox.classList.add('hidden');
+                
+                if (currentRelay) startFeedSubscription(currentRelay);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (err) {
+                log('log_error', 'Error al abrir evento: ' + err.message, 'error');
+            }
+        };
+
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
             feedList.innerHTML = '';
@@ -1510,6 +1553,8 @@
                 filter.authors = [...followedPubkeys];
             } else if (feedMode === 'profile' && currentProfilePubkey) {
                 filter.authors = [currentProfilePubkey];
+            } else if (feedMode === 'event' && currentEventId) {
+                filter = { ids: [currentEventId], limit: 1 };
             }
 
             log('log_sub_start', `${relay.url} [Mode: ${feedMode}]`);
