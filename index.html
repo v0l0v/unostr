@@ -1019,6 +1019,45 @@
             font-size: 0.8rem;
             font-weight: 700;
         }
+
+        .btn-organizer-toggle {
+            background: rgba(255, 176, 0, 0.05);
+            border: 1px solid var(--accent-amber);
+            color: var(--accent-amber);
+            width: 100%;
+            padding: 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .btn-organizer-toggle.active {
+            background: var(--accent-amber);
+            color: #000;
+        }
+
+        .btn-edit-event {
+            background: transparent;
+            border: 1px solid var(--border-dim);
+            color: var(--text-dim);
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-edit-event:hover {
+            color: var(--accent-amber);
+            border-color: var(--accent-amber);
+        }
+
         .amber { color: var(--accent-amber); }
         .dim { color: var(--text-dim); }
     </style>
@@ -1099,8 +1138,12 @@
                 <textarea id="post-content" data-i18n-placeholder="msg_placeholder" placeholder="// Escribe un mensaje para el vacío..."></textarea>
             </div>
             <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Firmar y Transmitir</button>
-        </section>
-
+            
+            <div id="organizer-area" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--border-dim);" class="hidden">
+                <button id="organizer-mode-btn" class="btn-organizer-toggle">
+                    ⚙️ MODO_ORGANIZADOR [OFF]
+                </button>
+            </div>
         </section>
 
         <!-- EVENT CREATOR (Organizer Mode Only) -->
@@ -1410,6 +1453,8 @@
             }
             if (currentRelay && userPubKey) {
                 postArea.classList.remove('hidden');
+                const orgArea = document.getElementById('organizer-area');
+                if (orgArea) orgArea.classList.remove('hidden');
             }
         }
 
