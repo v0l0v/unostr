@@ -713,19 +713,6 @@
             text-shadow: 0 0 5px rgba(255, 176, 0, 0.4);
         }
 
-        .npub-link {
-            color: var(--accent-cyan);
-            cursor: pointer;
-            text-decoration: none;
-            transition: var(--transition);
-        }
-
-        .npub-link:hover {
-            text-decoration: underline;
-            color: var(--accent-amber);
-            text-shadow: 0 0 5px rgba(255, 176, 0, 0.4);
-        }
-
         .event-link {
             color: var(--accent-amber);
             cursor: pointer;
@@ -848,6 +835,190 @@
         }
 
         .hidden { display: none !important; }
+
+        /* --- EVENT MARKETPLACE STYLES --- */
+        .event-marketplace-card {
+            background: rgba(0, 242, 255, 0.02);
+            border: 2px solid var(--border-dim);
+            border-left: 4px solid var(--accent-cyan);
+            padding: 1.5rem;
+            margin: 1rem 0 1rem 50px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            font-family: var(--font-main);
+        }
+
+        .event-marketplace-card.confirmed {
+            border-left-color: var(--accent-green);
+            background: rgba(0, 255, 65, 0.02);
+        }
+
+        .marketplace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .marketplace-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+        }
+
+        .marketplace-price {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--accent-amber);
+            text-align: right;
+        }
+
+        .fiat-val {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        .marketplace-stats {
+            margin: 1.5rem 0;
+        }
+
+        .progress-container {
+            height: 8px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--accent-cyan);
+            width: 0%;
+            transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .progress-min-marker {
+            position: absolute;
+            top: -4px;
+            bottom: -4px;
+            width: 2px;
+            background: var(--accent-amber);
+            z-index: 10;
+        }
+
+        .stats-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+
+        .btn-reserve {
+            width: 100%;
+            margin-top: 1rem;
+            background: var(--accent-cyan);
+            color: var(--bg-base);
+            border: none;
+            padding: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-reserve:hover {
+            background: white;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+        }
+
+        .btn-reserve.reserved {
+            background: var(--accent-green);
+            pointer-events: none;
+        }
+
+        /* --- MODAL SYSTEM --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--accent-cyan);
+            max-width: 450px;
+            width: 100%;
+            padding: 2rem;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,242,255,0.1);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+
+        .payment-qr-container {
+            background: white;
+            padding: 1rem;
+            width: 220px;
+            height: 220px;
+            margin: 1.5rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .qr-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-placeholder::after {
+            content: "SCAN QR";
+            font-size: 0.7rem;
+            color: #000;
+            font-weight: 800;
+        }
+
+        .payment-status {
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--accent-amber);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
         .amber { color: var(--accent-amber); }
         .dim { color: var(--text-dim); }
     </style>
@@ -946,6 +1117,30 @@
     </main>
 
     <footer>
+        <div id="payment-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <span class="modal-close" id="close-payment-modal">×</span>
+                <div class="marketplace-title" id="modal-event-title">EVENTO_RESERVADO</div>
+                <p style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary);" id="modal-event-desc"></p>
+                
+                <div class="payment-qr-container">
+                    <div id="payment-qr" class="qr-placeholder">
+                        <img id="qr-img" src="" alt="QR" style="max-width: 100%; display: none;">
+                    </div>
+                </div>
+                
+                <div style="text-align: center;">
+                    <div class="marketplace-price" style="text-align: center; font-size: 1.2rem;">
+                        <span id="modal-event-price">0</span> SATS
+                    </div>
+                    <div class="fiat-val" id="modal-event-fiat">≈ 0.00 €</div>
+                </div>
+                
+                <button id="confirm-payment-btn" class="btn-reserve" style="margin-top: 2rem;">Confirmar Pago (Simulación)</button>
+                <div id="payment-status-text" class="payment-status hidden">ESPERANDO_FONDOS_LN...</div>
+            </div>
+        </div>
+
         <div class="console-header">
             <span data-i18n="console_title">Consola del Sistema // Eventos Nostr</span>
             <span id="console-status" data-i18n="console_ready">LISTO</span>
@@ -1096,6 +1291,7 @@
         let currentSub = null;
         let currentLang = 'es';
         let followedPubkeys = new Set(JSON.parse(localStorage.getItem('followed_pubkeys') || '[]'));
+        let EVENT_STATS = JSON.parse(localStorage.getItem('event_stats') || '{}');
         let feedMode = 'global'; // 'global', 'following', 'profile', 'event'
         let currentProfilePubkey = null;
         let currentEventId = null;
@@ -1309,6 +1505,12 @@
             try {
                 if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
                     const parsed = deepParse(trimmed);
+                    
+                    // New: Detect Event Marketplace
+                    if (parsed.type === "EVENT_MARKETPLACE") {
+                        return renderEventMarketplace(parsed);
+                    }
+
                     return generateInterpretedUI(parsed);
                 }
             } catch (e) {}
@@ -1336,6 +1538,55 @@
             });
 
             return `<div class="event-content">${html}</div>`;
+        }
+
+        function renderEventMarketplace(data) {
+            const id = data.id || 'demo-event';
+            const stats = EVENT_STATS[id] || { count: 0, reserved: false };
+            const min = data.min || 1;
+            const max = data.max || 100;
+            const price = data.price || 0;
+            const progress = Math.min(100, (stats.count / max) * 100);
+            const minPos = (min / max) * 100;
+            const isConfirmed = stats.count >= min;
+            
+            // Mock conversion (100k sats approx 60 eur)
+            const fiat = (price * 0.0006).toFixed(2);
+
+            return `
+                <div class="event-marketplace-card ${isConfirmed ? 'confirmed' : ''}" data-event-id="${id}">
+                    <div class="marketplace-header">
+                        <div class="marketplace-title">${escapeHTML(data.title || 'Evento sin título')}</div>
+                        <div class="marketplace-price">
+                            ${price.toLocaleString()} SATS
+                            <span class="fiat-val">≈ ${fiat} €</span>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 1rem;">
+                        ${escapeHTML(data.description || '')}
+                    </p>
+
+                    <div class="marketplace-stats">
+                        <div class="progress-container">
+                            <div class="progress-bar" style="width: ${progress}%"></div>
+                            <div class="progress-min-marker" style="left: ${minPos}%" title="Mínimo requerido: ${min}"></div>
+                        </div>
+                        <div class="stats-label">
+                            <span>${stats.count} RESERVAS</span>
+                            <span>META: ${min} (MÁX: ${max})</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-reserve ${stats.reserved ? 'reserved' : ''}" 
+                            onclick="openPaymentModal('${id}', ${price}, '${escapeHTML(data.title)}', '${escapeHTML(data.description)}')"
+                            ${stats.reserved ? 'disabled' : ''}>
+                        ${stats.reserved ? '✅ PLAZA RESERVADA' : '▶️ PRE-RESERVAR PLAZA'}
+                    </button>
+                    
+                    ${isConfirmed ? '<div style="color: var(--accent-green); font-size: 0.7rem; font-weight: 800; margin-top: 0.5rem; text-align: center;">✓ EVENTO CONFIRMADO (MÍNIMO ALCANZADO)</div>' : ''}
+                </div>
+            `;
         }
 
         function createEventCard(event) {
@@ -1567,6 +1818,91 @@
             feedMode = 'global';
             updateFeedTabs();
             if (currentRelay) startFeedSubscription(currentRelay);
+        };
+
+        // --- MARKETPLACE LOGIC ---
+        let currentActiveEvent = null;
+
+        window.openPaymentModal = (id, price, title, desc) => {
+            currentActiveEvent = { id, price, title, desc };
+            document.getElementById('modal-event-title').textContent = title;
+            document.getElementById('modal-event-desc').textContent = desc;
+            document.getElementById('modal-event-price').textContent = price.toLocaleString();
+            document.getElementById('modal-event-fiat').textContent = `≈ ${(price * 0.0006).toFixed(2)} €`;
+            
+            // Generate QR (Mock image)
+            const qrImg = document.getElementById('qr-img');
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=lightning:event-${id}-${price}`;
+            qrImg.style.display = 'block';
+            
+            document.getElementById('payment-modal').classList.remove('hidden');
+            document.getElementById('payment-status-text').classList.add('hidden');
+            document.getElementById('confirm-payment-btn').disabled = false;
+        };
+
+        document.getElementById('close-payment-modal').onclick = () => {
+            document.getElementById('payment-modal').classList.add('hidden');
+        };
+
+        document.getElementById('confirm-payment-btn').onclick = async () => {
+            if (!currentActiveEvent) return;
+            
+            const btn = document.getElementById('confirm-payment-btn');
+            const statusText = document.getElementById('payment-status-text');
+            
+            btn.disabled = true;
+            statusText.classList.remove('hidden');
+            
+            // Simulación de espera de red
+            await new Promise(r => setTimeout(r, 2000));
+            
+            const id = currentActiveEvent.id;
+            if (!EVENT_STATS[id]) EVENT_STATS[id] = { count: 10, reserved: false }; // Mock: ya hay 10 personas
+            
+            EVENT_STATS[id].count++;
+            EVENT_STATS[id].reserved = true;
+            localStorage.setItem('event_stats', JSON.stringify(EVENT_STATS));
+            
+            log('log_info', `Reserva confirmada para: ${currentActiveEvent.title}`, 'success');
+            
+            document.getElementById('payment-modal').classList.add('hidden');
+            
+            // Refrescar tarjetas de mercado en el feed
+            document.querySelectorAll(`[data-event-id="${id}"]`).forEach(card => {
+                const parent = card.parentElement;
+                // Esto es un truco simple para forzar re-renderizado local
+                // En una app real, esto vendría de un evento de Nostr
+                card.outerHTML = renderEventMarketplace({
+                    id: id,
+                    title: currentActiveEvent.title,
+                    description: currentActiveEvent.desc,
+                    price: currentActiveEvent.price,
+                    min: 15, // Mock values
+                    max: 50
+                });
+            });
+        };
+
+        // Helper para testing
+        window.injectDemoEvent = () => {
+            const demo = {
+                type: "EVENT_MARKETPLACE",
+                id: "expo-cypherpunk-2026",
+                title: "Exposición Arte Cypherpunk",
+                description: "Reserva tu plaza para la exposición privada. Si llegamos a 15 personas, alquilamos la galería.",
+                price: 50000,
+                min: 15,
+                max: 50
+            };
+            const event = {
+                kind: 1,
+                pubkey: userPubKey || '0000000000000000000000000000000000000000000000000000000000000000',
+                created_at: Math.floor(Date.now() / 1000),
+                content: JSON.stringify(demo),
+                id: 'demo-' + Date.now()
+            };
+            feedList.prepend(createEventCard(event));
+            log('log_info', 'Demo de Evento inyectada en el feed');
         };
 
         window.viewEvent = (bech32Id) => {
