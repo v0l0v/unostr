@@ -1918,37 +1918,63 @@
         };
 
         function manageDynamicTab(type, id, labelHint) {
-            let tab = document.getElementById('feed-dynamic-tab');
+            const tabId = type === 'profile' ? 'feed-profile-tab' : 'feed-event-tab';
+            let tab = document.getElementById(tabId);
+
             if (!tab) {
                 tab = document.createElement('button');
-                tab.id = 'feed-dynamic-tab';
+                tab.id = tabId;
                 tab.className = 'tab';
-                document.getElementById('feed-tabs-container').appendChild(tab);
+                // Profile tab goes before event tab (or at end)
+                const container = document.getElementById('feed-tabs-container');
+                if (type === 'event') {
+                    container.appendChild(tab);
+                } else {
+                    // Profile tab: insert before event tab if it exists, else append
+                    const eventTab = document.getElementById('feed-event-tab');
+                    eventTab ? container.insertBefore(tab, eventTab) : container.appendChild(tab);
+                }
             }
-            
-            // Re-bind click according to type
+
+            // Re-bind click
             tab.onclick = () => {
                 if (type === 'profile') viewProfile(id);
                 else viewEvent(id);
             };
-            
+
             if (type === 'profile') {
                 const label = labelHint || id.substring(0, 8);
-                tab.innerHTML = `<span class="amber" style="font-size:0.6rem">@</span>${label} <span class="tab-close" onclick="closeDynamicTab(event)">×</span>`;
+                tab.innerHTML = `<span class="amber" style="font-size:0.6rem">@</span>${label} <span class="tab-close" onclick="closeDynamicTab(event, 'profile')">×</span>`;
             } else {
                 const label = id.substring(0, 8);
-                tab.innerHTML = `<span class="amber" style="font-size:0.6rem">ID:</span>${label} <span class="tab-close" onclick="closeDynamicTab(event)">×</span>`;
+                tab.innerHTML = `<span class="amber" style="font-size:0.6rem">ID:</span>${label} <span class="tab-close" onclick="closeDynamicTab(event, 'event')">×</span>`;
             }
         }
 
-        window.closeDynamicTab = (e) => {
+        window.closeDynamicTab = (e, type) => {
             if (e) e.stopPropagation();
-            const tab = document.getElementById('feed-dynamic-tab');
+            const tabId = type === 'profile' ? 'feed-profile-tab' : 'feed-event-tab';
+            const tab = document.getElementById(tabId);
             if (tab) tab.remove();
-            
-            feedMode = 'global';
-            updateFeedTabs();
-            if (currentRelay) startFeedSubscription(currentRelay);
+
+            // If closing the active tab, decide where to land
+            if ((type === 'profile' && feedMode === 'profile') ||
+                (type === 'event'   && feedMode === 'event')) {
+                // If the other dynamic tab exists, activate it
+                const otherType = type === 'profile' ? 'event' : 'profile';
+                const otherTab  = document.getElementById(type === 'profile' ? 'feed-event-tab' : 'feed-profile-tab');
+                if (otherTab) {
+                    if (otherType === 'event') {
+                        feedMode = 'event';
+                    } else {
+                        feedMode = 'profile';
+                    }
+                } else {
+                    feedMode = 'global';
+                }
+                updateFeedTabs();
+                if (currentRelay) startFeedSubscription(currentRelay);
+            }
         };
 
         // --- MARKETPLACE LOGIC ---
@@ -2116,19 +2142,40 @@
                 let hexId = id;
                 if (decoded.type === 'note') hexId = decoded.data;
                 else if (decoded.type === 'nevent') hexId = decoded.data.id;
-                
+
+                // Se viene desde perfil: prepend en vez de limpiar
+                const comingFromProfile = feedMode === 'profile';
+
                 feedMode = 'event';
                 currentEventId = hexId;
-                
-                manageDynamicTab('event', id); // Use original Bech32 for tab label
+
+                manageDynamicTab('event', id);
                 updateFeedTabs();
-                
-                if (currentRelay) startFeedSubscription(currentRelay);
+
+                if (currentRelay) {
+                    if (comingFromProfile) {
+                        // Only fetch and prepend this specific event without clearing
+                        appendEventToFeed(hexId, currentRelay);
+                    } else {
+                        startFeedSubscription(currentRelay);
+                    }
+                }
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (err) {
                 log('log_error', 'Error al abrir evento: ' + err.message, 'error');
             }
         };
+
+        function appendEventToFeed(hexId, relay) {
+            const sub = relay.subscribe([{ kinds: [1], ids: [hexId], limit: 1 }], {
+                onevent(event) {
+                    const card = createEventCard(event);
+                    feedList.prepend(card);
+                    sub.close();
+                },
+                oneose() { sub.close(); }
+            });
+        }
 
         function startFeedSubscription(relay) {
             if (currentSub) currentSub.close();
@@ -2211,33 +2258,25 @@
         const manualNpubInput = document.getElementById('manual-npub');
 
         function updateFeedTabs() {
-            const dynamicTab = document.getElementById('feed-dynamic-tab');
+            const profileTab = document.getElementById('feed-profile-tab');
+            const eventTab   = document.getElementById('feed-event-tab');
+
+            // Reset fixed tabs
+            feedGlobalBtn.classList.remove('active');
+            feedFollowingBtn.classList.remove('active');
+            followBox.classList.add('hidden');
+            if (profileTab) profileTab.classList.remove('active');
+            if (eventTab)   eventTab.classList.remove('active');
+
             if (feedMode === 'following') {
                 followBox.classList.remove('hidden');
                 feedFollowingBtn.classList.add('active');
-                feedGlobalBtn.classList.remove('active');
-                if (dynamicTab) dynamicTab.classList.remove('active');
             } else if (feedMode === 'global') {
-                followBox.classList.add('hidden');
                 feedGlobalBtn.classList.add('active');
-                feedFollowingBtn.classList.remove('active');
-                if (dynamicTab) dynamicTab.classList.remove('active');
             } else if (feedMode === 'profile') {
-                followBox.classList.add('hidden');
-                feedGlobalBtn.classList.remove('active');
-                feedFollowingBtn.classList.remove('active');
-                if (dynamicTab) dynamicTab.classList.add('active');
+                if (profileTab) profileTab.classList.add('active');
             } else if (feedMode === 'event') {
-                followBox.classList.add('hidden');
-                feedGlobalBtn.classList.remove('active');
-                feedFollowingBtn.classList.remove('active');
-                if (dynamicTab) dynamicTab.classList.add('active');
-            } else {
-                // Event mode or other
-                followBox.classList.add('hidden');
-                feedGlobalBtn.classList.remove('active');
-                feedFollowingBtn.classList.remove('active');
-                if (dynamicTab) dynamicTab.classList.remove('active');
+                if (eventTab) eventTab.classList.add('active');
             }
         }
 
