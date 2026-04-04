@@ -422,6 +422,31 @@
             color: var(--accent-amber);
             border-color: var(--accent-amber);
         }
+        
+        .btn-react {
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            color: var(--accent-cyan);
+            font-size: 0.65rem;
+            font-family: inherit;
+            padding: 2px 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            border-radius: 2px;
+        }
+
+        .btn-react:hover:not(:disabled) {
+            background: var(--accent-cyan);
+            color: var(--bg-base);
+        }
+
+        .btn-react:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            border-color: var(--border-dim);
+            color: var(--text-dim);
+            background: transparent;
+        }
 
         .inspector-panel {
             margin-top: 1rem;
@@ -591,7 +616,11 @@
                 log_publish_success: 'Relay confirmed receipt [OK].',
                 log_error: 'Error: ',
                 status_connected: 'CONNECTED // ',
-                publish_btn_label: 'Sign & Broadcast'
+                publish_btn_label: 'Sign & Broadcast',
+                log_auth_nip42_start: 'NIP-42 AUTH challenge received. Authenticating...',
+                log_auth_nip42_ok: 'NIP-42 Authentication sent successfully.',
+                log_react_start: 'Signing reaction Kind 7...',
+                log_react_ok: 'Reaction sent successfully.'
             },
             es: {
                 conn_not_connected: 'NO_CONECTADO',
@@ -628,7 +657,11 @@
                 log_publish_success: 'Relay confirmó recepción [OK].',
                 log_error: 'Error: ',
                 status_connected: 'CONECTADO // ',
-                publish_btn_label: 'Firmar y Transmitir'
+                publish_btn_label: 'Firmar y Transmitir',
+                log_auth_nip42_start: 'Desafío NIP-42 (AUTH) recibido. Autenticando...',
+                log_auth_nip42_ok: 'Autenticación NIP-42 enviada con éxito.',
+                log_react_start: 'Firmando reacción Tipo 7...',
+                log_react_ok: 'Reacción enviada con éxito.'
             }
         };
 
@@ -831,11 +864,48 @@
                     </div>
                 </div>
                 <div class="event-actions">
+                    <button class="btn-react" ${!userPubKey ? 'disabled' : ''} title="Reaccionar (+)">⚡</button>
                     <button class="btn-inspect">[JSON]</button>
                 </div>
                 <div class="event-content">${escapeHTML(event.content)}</div>
                 <div class="inspector-panel">${JSON.stringify(event, null, 4)}</div>
             `;
+            
+            const btnReact = card.querySelector('.btn-react');
+            btnReact.addEventListener('click', async () => {
+                if (!currentRelay || !userPubKey) return;
+                
+                btnReact.disabled = true;
+                log('log_react_start');
+                
+                try {
+                    const reactionEvent = {
+                        kind: 7,
+                        created_at: Math.floor(Date.now() / 1000),
+                        tags: [
+                            ['e', event.id, currentRelay.url],
+                            ['p', event.pubkey]
+                        ],
+                        content: '+'
+                    };
+
+                    let signedReaction;
+                    if (userSecretKey) {
+                        signedReaction = finalizeEvent(reactionEvent, userSecretKey);
+                    } else if (window.nostr) {
+                        signedReaction = await window.nostr.signEvent(reactionEvent);
+                    } else {
+                        throw new Error('No method to sign');
+                    }
+
+                    await currentRelay.publish(signedReaction);
+                    log('log_react_ok');
+                    btnReact.textContent = '✅';
+                } catch (err) {
+                    log('log_error', 'Reacción fallida: ' + err.message, 'error');
+                    btnReact.disabled = false;
+                }
+            });
 
             const btnInspect = card.querySelector('.btn-inspect');
             const inspector = card.querySelector('.inspector-panel');
@@ -897,6 +967,41 @@
                 currentRelay = await Relay.connect(url);
                 log('log_connected', currentRelay.url);
                 
+                // NIP-42 Authentication handler
+                currentRelay.onauth = async (challenge) => {
+                    if (!userPubKey) {
+                        log('log_error', 'Relay requested AUTH but no identity is loaded.', 'warn');
+                        return;
+                    }
+                    
+                    log('log_auth_nip42_start');
+                    try {
+                        const authEvent = {
+                            kind: 22242,
+                            created_at: Math.floor(Date.now() / 1000),
+                            tags: [
+                                ['relay', url],
+                                ['challenge', challenge]
+                            ],
+                            content: ''
+                        };
+
+                        let signedAuthEvent;
+                        if (userSecretKey) {
+                            signedAuthEvent = finalizeEvent(authEvent, userSecretKey);
+                        } else if (window.nostr) {
+                            signedAuthEvent = await window.nostr.signEvent(authEvent);
+                        } else {
+                            throw new Error('No method to sign AUTH event');
+                        }
+
+                        await currentRelay.auth(signedAuthEvent);
+                        log('log_auth_nip42_ok');
+                    } catch (err) {
+                        log('log_error', 'AUTH failed: ' + err.message, 'error');
+                    }
+                };
+
                 currentRelay.onclose = () => {
                     log('log_disconnected', url, 'error');
                     currentRelay = null;
