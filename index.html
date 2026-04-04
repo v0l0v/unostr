@@ -106,19 +106,84 @@
 
         .header-actions {
             display: flex;
-            gap: 1rem;
-            align-items: center;
+            flex-direction: column;
+            gap: 0.25rem;
         }
+
+        /* Sidebar & Layout Transitions */
+        .app-layout {
+            display: flex;
+            flex: 1;
+            position: relative;
+            min-height: 0; /* Important for flex child scrolling */
+        }
+
+        .sidebar {
+            width: 320px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border-dim);
+            padding: 1.5rem;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            z-index: 50;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar.minimized {
+            width: 48px;
+            padding: 1rem 0;
+            border-right-color: var(--accent-cyan);
+            overflow: hidden;
+            background: #050608;
+            cursor: pointer;
+        }
+
+        .sidebar.minimized .section-title,
+        .sidebar.minimized .tabs,
+        .sidebar.minimized .relay-scroller,
+        .sidebar.minimized .input-wrapper,
+        .sidebar.minimized .btn-group {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        /* Indicador visual cuando está minimizado */
+        .sidebar.minimized::after {
+            content: "CONFIG [⚙]";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            white-space: nowrap;
+            color: var(--accent-cyan);
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            opacity: 0.6;
+        }
+
+        .sidebar.minimized:hover::after { opacity: 1; }
 
         main {
             flex: 1;
-            max-width: 800px;
-            width: 95%;
+            max-width: 900px;
+            width: 100%;
             margin: 0 auto;
             padding: var(--gap);
             display: flex;
             flex-direction: column;
             gap: var(--gap);
+            transition: margin 0.4s;
+        }
+
+        @media (max-width: 1100px) {
+            .app-layout { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-dim); height: auto; }
+            .sidebar.minimized { height: 40px; width: 100%; border-bottom-color: var(--accent-cyan); }
+            .sidebar.minimized::after { transform: translate(-50%, -50%) rotate(0); }
+            main { max-width: 100%; }
         }
 
         .card {
@@ -609,50 +674,54 @@
         </div>
     </section>
 
-    <main>
-        <!-- Manual Login Area (Hidden by default) -->
-        <section id="manual-login-area" class="card hidden">
-            <div class="section-title" data-i18n="login_manual_title">Autenticación Manual</div>
-            <p class="caution-text" data-i18n="caution_nsec">[!] PRECAUCIÓN: No compartas tu nsec en sitios no confiables. Se borrará al recargar.</p>
-            <div class="input-wrapper">
-                <label for="nsec-input">PRIVATE_KEY [HEX_o_NSEC]</label>
-                <input type="password" id="nsec-input" placeholder="64_caracteres_hex_o_nsec1..." autocomplete="off">
-            </div>
-            <div class="btn-group">
-                <button id="manual-auth-btn" class="btn primary" data-i18n="btn_authenticate">Autenticar_Identidad</button>
-            </div>
-        </section>
+    <div class="app-layout">
+        <aside id="sidebar" class="sidebar">
+            <section class="card" style="border:none; padding:0; background:transparent;">
+                <div class="section-title" data-i18n="section_conn">Configuración de Conexión</div>
+                <div class="tabs">
+                    <button id="btn-public" class="tab active" data-i18n="network_public">Red_Pública</button>
+                    <button id="btn-private" class="tab" data-i18n="network_private">Tor_Cifrado</button>
+                </div>
+                <div id="relay-scroller" class="relay-scroller"></div>
+                <div class="input-wrapper">
+                    <label for="relay-url" data-i18n="relay_uri_label">URI_DEL_RELAY</label>
+                    <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
+                    <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;" data-i18n="tor_warning">[AVISO] Las direcciones .onion requieren el navegador Tor.</p>
+                </div>
+                <div class="btn-group">
+                    <button id="connect-btn" class="btn primary" data-i18n="btn_establish_conn" style="width:100%;">Establecer_Conexión</button>
+                </div>
+            </section>
+        </aside>
 
-        <section class="card">
-            <div class="section-title" data-i18n="section_conn">Configuración de Conexión</div>
-            <div class="tabs">
-                <button id="btn-public" class="tab active" data-i18n="network_public">Red_Pública</button>
-                <button id="btn-private" class="tab" data-i18n="network_private">Tor_Cifrado</button>
-            </div>
-            <div id="relay-scroller" class="relay-scroller"></div>
-            <div class="input-wrapper">
-                <label for="relay-url" data-i18n="relay_uri_label">URI_DEL_RELAY</label>
-                <input type="text" id="relay-url" placeholder="wss://..." value="wss://nos.lol">
-                <p id="tor-note" class="hidden amber" style="font-size: 0.7rem;" data-i18n="tor_warning">[AVISO] Las direcciones .onion requieren el navegador Tor.</p>
-            </div>
-            <div class="btn-group">
-                <button id="connect-btn" class="btn primary" data-i18n="btn_establish_conn">Establecer_Conexión</button>
-            </div>
-        </section>
+        <main>
+            <!-- Manual Login Area (Hidden by default) -->
+            <section id="manual-login-area" class="card hidden">
+                <div class="section-title" data-i18n="login_manual_title">Autenticación Manual</div>
+                <p class="caution-text" data-i18n="caution_nsec">[!] PRECAUCIÓN: No compartas tu nsec en sitios no confiables. Se borrará al recargar.</p>
+                <div class="input-wrapper">
+                    <label for="nsec-input">PRIVATE_KEY [HEX_o_NSEC]</label>
+                    <input type="password" id="nsec-input" placeholder="64_caracteres_hex_o_nsec1..." autocomplete="off">
+                </div>
+                <div class="btn-group">
+                    <button id="manual-auth-btn" class="btn primary" data-i18n="btn_authenticate">Autenticar_Identidad</button>
+                </div>
+            </section>
 
-        <section id="post-area" class="card hidden">
-            <div class="section-title" data-i18n="section_broadcast">Transmitir Datos</div>
-            <div class="input-wrapper">
-                <textarea id="post-content" data-i18n-placeholder="msg_placeholder" placeholder="// Escribe un mensaje para el vacío..."></textarea>
-            </div>
-            <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Firmar y Transmitir</button>
-        </section>
+            <section id="post-area" class="card hidden">
+                <div class="section-title" data-i18n="section_broadcast">Transmitir Datos</div>
+                <div class="input-wrapper">
+                    <textarea id="post-content" data-i18n-placeholder="msg_placeholder" placeholder="// Escribe un mensaje para el vacío..."></textarea>
+                </div>
+                <button id="publish-btn" class="btn primary" data-i18n="btn_sign_broadcast">Firmar y Transmitir</button>
+            </section>
 
-        <section id="feed-container" class="card hidden">
-            <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
-            <div id="feed-list"></div>
-        </section>
-    </main>
+            <section id="feed-container" class="card hidden">
+                <div class="section-title" data-i18n="section_stream">Flujo de Datos [Tipo 1]</div>
+                <div id="feed-list"></div>
+            </section>
+        </main>
+    </div>
 
     <footer>
         <div class="console-header">
@@ -1064,6 +1133,9 @@
                 currentRelay = await Relay.connect(url);
                 log('log_connected', currentRelay.url);
                 
+                // Sidebar auto-minimize
+                sidebar.classList.add('minimized');
+
                 // NIP-42 Authentication handler
                 currentRelay.onauth = async (challenge) => {
                     if (!userPubKey) {
@@ -1143,6 +1215,14 @@
         const profileDrawer = document.getElementById('profile-drawer');
         const closeProfileBtn = document.getElementById('close-profile-btn');
         const logoutBtn = document.getElementById('logout-btn');
+        const sidebar = document.getElementById('sidebar');
+
+        // Sidebar manual toggle (click while minimized)
+        sidebar.addEventListener('click', (e) => {
+            if (sidebar.classList.contains('minimized')) {
+                sidebar.classList.remove('minimized');
+            }
+        });
 
         function updateProfileModal() {
             if (!userPubKey || !PROFILES[userPubKey]) return;
