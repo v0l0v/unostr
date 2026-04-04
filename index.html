@@ -14,6 +14,7 @@
             /* Cypherpunk / Technical Color Palette */
             --bg-base: #0a0b0d;
             --bg-surface: #12141a;
+            --bg-surface-rgb: 18, 20, 26;
             --bg-hover: #1c1f26;
             
             --border-dim: #2d3139;
@@ -947,6 +948,103 @@
             pointer-events: none;
         }
 
+        /* --- ESCROW AUDIT STYLES --- */
+        .escrow-audit-section {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-dim);
+            position: relative;
+        }
+
+        .audit-title {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .audit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+            gap: 8px;
+        }
+
+        .audit-user {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            color: var(--accent-cyan);
+            cursor: help;
+            overflow: hidden;
+        }
+
+        .audit-user img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .audit-locked {
+            position: relative;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .audit-blur-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(var(--bg-surface-rgb), 0.5);
+            backdrop-filter: blur(6px);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .lock-icon {
+            font-size: 1.2rem;
+            color: var(--accent-amber);
+            opacity: 0.8;
+        }
+
+        .lock-msg {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .escrow-total-badge {
+            display: inline-block;
+            background: rgba(0, 242, 255, 0.1);
+            color: var(--accent-cyan);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            margin-left: auto;
+        }
+
         /* --- MODAL SYSTEM --- */
         .modal-overlay {
             position: fixed;
@@ -1707,9 +1805,62 @@
             return `<div class="event-content">${html}</div>`;
         }
 
+        function renderEscrowAudit(eventId, stats) {
+            const isReserved = stats.reserved || false;
+            const participants = stats.participants || [];
+            const totalSats = stats.count * (currentActiveEvent?.price || 0);
+
+            // Si no ha reservado, mostramos el estado bloqueado
+            if (!isReserved) {
+                return `
+                    <div class="escrow-audit-section">
+                        <div class="audit-title">
+                            🔒 Auditoría de Depósitos
+                            <span class="escrow-total-badge">??? SATS</span>
+                        </div>
+                        <div class="audit-locked">
+                            <div class="audit-blur-layer">
+                                <span class="lock-icon">🔏</span>
+                                <span class="lock-msg">Contenido para participantes</span>
+                                <span style="font-size:0.5rem; color:var(--text-dim);">Pre-reserva para auditar el fondo y ver asistentes</span>
+                            </div>
+                            <div class="audit-grid" style="opacity: 0.1">
+                                ${Array(8).fill('<div class="audit-user">?</div>').join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Si ha reservado, mostramos la transparencia total
+            return `
+                <div class="escrow-audit-section">
+                    <div class="audit-title">
+                        📑 Auditoría: Fondos en Escrow
+                        <span class="escrow-total-badge">${(stats.count * 50000).toLocaleString()} SATS</span>
+                    </div>
+                    <div class="audit-grid">
+                        ${participants.map(pk => {
+                            const p = PROFILES[pk] || {};
+                            const npub = nip19.npubEncode(pk);
+                            return `
+                                <div class="audit-user" title="${p.name || npub}" onclick="viewProfile('${npub}')">
+                                    ${p.picture ? `<img src="${p.picture}">` : '👤'}
+                                </div>
+                            `;
+                        }).join('')}
+                        ${stats.count > participants.length ? `<div class="audit-user" style="background:var(--bg-hover); font-size:0.5rem; color:var(--text-dim)">+${stats.count - participants.length}</div>` : ''}
+                    </div>
+                    <div style="margin-top:0.5rem; font-size:0.55rem; color:var(--accent-green); text-transform:uppercase; letter-spacing:0.5px;">
+                        [✔] Depósito vigilado por tu nodo y verificado en red
+                    </div>
+                </div>
+            `;
+        }
+
         function renderEventMarketplace(data) {
             const id = data.id || 'demo-event';
-            const stats = EVENT_STATS[id] || { count: 0, reserved: false };
+            const stats = EVENT_STATS[id] || { count: 0, reserved: false, participants: [] };
             const min = data.min || 1;
             const max = data.max || 100;
             const price = data.price || 0;
@@ -1751,7 +1902,9 @@
                         ${stats.reserved ? '✅ PLAZA RESERVADA' : '▶️ PRE-RESERVAR PLAZA'}
                     </button>
                     
-                    ${isConfirmed ? '<div style="color: var(--accent-green); font-size: 0.7rem; font-weight: 800; margin-top: 0.5rem; text-align: center;">✓ EVENTO CONFIRMADO (MÍNIMO ALCANZADO)</div>' : ''}
+                    ${renderEscrowAudit(id, stats)}
+
+                    ${isConfirmed ? '<div style="color: var(--accent-green); font-size: 0.7rem; font-weight: 800; margin-top: 1rem; text-align: center; border: 1px solid var(--accent-green); padding: 5px; border-radius: 4px;">✓ EVENTO CONFIRMADO (MÍNIMO ALCANZADO)</div>' : ''}
                 </div>
             `;
         }
@@ -2215,13 +2368,26 @@
             await new Promise(r => setTimeout(r, 2000));
             
             const id = currentActiveEvent.id;
-            if (!EVENT_STATS[id]) EVENT_STATS[id] = { count: 10, reserved: false }; // Mock: ya hay 10 personas
+            if (!EVENT_STATS[id]) {
+                EVENT_STATS[id] = { 
+                    count: 12, 
+                    reserved: false, 
+                    participants: [
+                        '40887871775c5152cd0ef94a6fd1a502ceac98f617802704f1664139cddcfcba',
+                        '32e1827611ef62cf03bdf8a13ba58f8b894d3a2e379893d56a2e4d02334e1509',
+                        '82341f882b6eabcd2ba5811ef62cf03bdf8a13ba58f8b894d3a2e379893d56a2'
+                    ] 
+                }; // Mock: ya hay participantes
+            }
             
             EVENT_STATS[id].count++;
             EVENT_STATS[id].reserved = true;
+            if (userPubKey && !EVENT_STATS[id].participants.includes(userPubKey)) {
+                EVENT_STATS[id].participants.push(userPubKey);
+            }
             localStorage.setItem('event_stats', JSON.stringify(EVENT_STATS));
             
-            log('log_info', `Reserva confirmada para: ${currentActiveEvent.title}`, 'success');
+            log('log_info', `Depósito Escrow confirmado para: ${currentActiveEvent.title}`, 'success');
             
             document.getElementById('payment-modal').classList.add('hidden');
             
