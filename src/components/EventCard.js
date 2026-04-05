@@ -80,21 +80,34 @@ export function createEventCard(event, options = {}) {
         </button>
     `;
     
+    footerActions.querySelector('.btn-react').onclick = () => {
+        window.dispatchEvent(new CustomEvent('reaction', { detail: { id: event.id, author: event.pubkey } }));
+    };
+
     footerActions.querySelector('.btn-copy').onclick = () => {
         const nevent = nip19.neventEncode({ id: event.id });
         navigator.clipboard.writeText(`nostr:${nevent}`);
         ui.log('log_info', 'Link copiado al portapapeles');
     };
 
-    footerActions.querySelector('.btn-translate').onclick = () => {
+    footerActions.querySelector('.btn-translate').onclick = (e) => {
+        const btn = e.currentTarget;
         const contentEl = contentContainer.querySelector('.event-content');
-        if (contentEl) {
-            contentEl.style.opacity = '0.5';
-            setTimeout(() => {
-                contentEl.innerHTML = `<i class="text-accent-amber">[Translating...]</i><br>${contentEl.innerHTML}`;
-                contentEl.style.opacity = '1';
-            }, 500);
-        }
+        if (!contentEl || btn.disabled) return;
+        
+        btn.disabled = true;
+        const originalText = contentEl.innerHTML;
+        contentEl.innerHTML = `<span class="text-accent-amber animate-pulse">[TRADUCIENDO...]</span>`;
+        
+        setTimeout(() => {
+            contentEl.innerHTML = `<div class="bg-accent-amber/10 p-2 border-l-2 border-accent-amber mb-2 text-sm italic">"Resumen para humanos: Este evento trata sobre ${event.content.substring(0, 30)}..."</div>` + originalText;
+            btn.innerHTML = '<span>🌐</span> <span class="hidden md:inline">Ver Original</span>';
+            btn.onclick = () => {
+                contentEl.innerHTML = originalText;
+                btn.innerHTML = '<span>🌐</span> <span class="hidden md:inline">Traducir</span>';
+                // Reset to original onclick
+            };
+        }, 1200);
     };
 
     footerActions.querySelector('.btn-inspect').onclick = () => {

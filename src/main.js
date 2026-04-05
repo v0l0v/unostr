@@ -118,16 +118,18 @@ connectBtn.onclick = async () => {
     }
     connectBtn.disabled = false;
 };
-
 nostr.setStatusHandler((status) => {
     const wsStatus = document.getElementById('ws-status');
     if (status === 'online') {
-        wsStatus.className = 'status-badge status-online px-3 py-1 rounded-full border border-accent-green/20 text-accent-green bg-accent-green/5 text-[0.65rem] font-extrabold uppercase';
-        wsStatus.textContent = TRANSLATIONS[ui.currentLang].status_connected + nostr.relay.url.split('://')[1];
+        wsStatus.className = 'status-badge status-online px-3 py-1 rounded-full border border-accent-green/20 text-accent-green bg-accent-green/5 text-[0.65rem] font-extrabold uppercase cursor-default';
+        wsStatus.textContent = TRANSLATIONS[ui.currentLang].status_connected + (nostr.relay ? nostr.relay.url.split('://')[1] : '...');
     } else {
-        wsStatus.className = 'status-badge status-offline px-3 py-1 rounded-full border border-accent-red/20 text-accent-red bg-accent-red/5 text-[0.65rem] font-extrabold uppercase';
-        wsStatus.textContent = TRANSLATIONS[ui.currentLang].conn_not_connected;
+        wsStatus.className = 'status-badge status-offline px-3 py-1 rounded-full border border-accent-red/20 text-accent-red bg-accent-red/5 text-[0.65rem] font-extrabold uppercase cursor-pointer hover:bg-accent-red/10 transition-all';
+        wsStatus.textContent = TRANSLATIONS[ui.currentLang].conn_not_connected + ' [RECONNECT]';
     }
+    wsStatus.onclick = () => {
+        if (status === 'offline') connectBtn.click();
+    };
 });
 
 nostr.setLogHandler((key, extra, type) => ui.log(key, extra, type));
@@ -177,6 +179,7 @@ publishBtn.onclick = async () => {
 
 logoutBtn.onclick = () => {
     localStorage.removeItem('userPubKey');
+    localStorage.removeItem('followed_pubkeys');
     location.reload();
 };
 
@@ -224,6 +227,19 @@ function populateProfileDrawer(pubkey, profile) {
     document.getElementById('profile-website').innerHTML = profile.website ? `<a href="${profile.website}" target="_blank" class="text-accent-cyan hover:underline">${profile.website}</a>` : '';
     document.getElementById('profile-banner').style.backgroundImage = profile.banner ? `url(${profile.banner})` : 'none';
     document.getElementById('profile-picture').innerHTML = profile.picture ? `<img src="${profile.picture}" class="w-full h-full object-cover">` : '👤';
+    
+    const followBtn = document.getElementById('follow-drawer-btn');
+    const isFollowing = followedPubkeys.has(pubkey);
+    followBtn.textContent = isFollowing ? TRANSLATIONS[ui.currentLang].btn_unfollow : TRANSLATIONS[ui.currentLang].btn_follow;
+    followBtn.className = isFollowing ? 'btn border-accent-red text-accent-red text-[0.7rem] px-4 flex-1' : 'btn primary text-[0.7rem] px-4 flex-1';
+    
+    followBtn.onclick = () => {
+        window.dispatchEvent(new CustomEvent('toggleFollow', { detail: { pubkey } }));
+        populateProfileDrawer(pubkey, profile); // Refresh drawer UI
+    };
+
+    // Hide logout if not me
+    document.getElementById('logout-btn').classList.toggle('hidden', pubkey !== nostr.userPubKey);
 }
 
 window.addEventListener('tabClosed', (e) => {
@@ -270,6 +286,30 @@ confirmPaymentBtn.onclick = async () => {
     // Refresh feed
     startFeedSubscription();
 };
+
+window.addEventListener('reaction', async (e) => {
+    if (!nostr.relay) return ui.log('log_error', 'Not connected to relay', 'warn');
+    const { id, author } = e.detail;
+    
+    ui.log('log_react_start');
+    const event = {
+        kind: 7,
+        created_at: Math.floor(Date.now() / 1000),
+        content: '+',
+        tags: [
+            ['e', id],
+            ['p', author]
+        ]
+    };
+
+    try {
+        const signed = await nostr.signEvent(event);
+        await nostr.publish(signed);
+        ui.log('log_react_ok');
+    } catch (err) {
+        ui.log('log_error', 'Reacción fallida: ' + err.message, 'warn');
+    }
+});
 
 // Follow/Unfollow Toggle
 window.addEventListener('toggleFollow', async (e) => {
