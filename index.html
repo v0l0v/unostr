@@ -1354,7 +1354,7 @@
             </div>
             <input type="hidden" id="event-id-hidden">
             <div class="btn-group" style="margin-top: 1rem;">
-                <button id="publish-event-btn" class="btn primary" style="width: 100%;">FIRM_Y_PUBLICAR_EVENTO (KIND_31924)</button>
+                <button id="publish-event-btn" class="btn primary" style="width: 100%;">FIRM_Y_PUBLICAR_EVENTO (KIND_30402)</button>
                 <button id="cancel-event-btn" class="btn" onclick="toggleOrganizerMode(false)">CANCELAR</button>
             </div>
         </section>
@@ -1711,8 +1711,16 @@
             return new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        function renderContent(content) {
+        function renderContent(event) {
+            const content = event.content;
             const trimmed = content.trim();
+            const tags = event.tags || [];
+            
+            // New: Detect Kind 30402 or 31923 (NIP-99 / NIP-52)
+            if (event.kind === 30402 || event.kind === 31923 || event.kind === 31924) {
+                return renderEventMarketplace(event);
+            }
+
             const NOISE = ['sig', 'id', 'pk', 'sig2', 'pk2', 'ots', 'created_at', 'pubkey', 'seen'];
 
             function deepParse(obj) {
@@ -1771,9 +1779,10 @@
                 if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
                     const parsed = deepParse(trimmed);
                     
-                    // New: Detect Event Marketplace
+                    // New: Detect Event Marketplace (Legacy JSON focus)
                     if (parsed.type === "EVENT_MARKETPLACE") {
-                        return renderEventMarketplace(parsed);
+                        // Pass mock event object for compatibility
+                        return renderEventMarketplace({ kind: 1, content: trimmed, tags: [] });
                     }
 
                     return generateInterpretedUI(parsed);
@@ -1858,7 +1867,33 @@
             `;
         }
 
-        function renderEventMarketplace(data) {
+        function renderEventMarketplace(event) {
+            let data = {};
+            
+            // Priority 1: Extract from Tags (NIP-99 / Addressable Event style)
+            const tags = event.tags || [];
+            const getTag = (k) => (tags.find(t => t[0] === k) || [])[1];
+            
+            data.id = getTag('d');
+            data.title = getTag('title') || getTag('name');
+            data.description = getTag('description') || getTag('summary');
+            data.price = parseInt(getTag('price') || 0);
+            data.min = parseInt(getTag('min') || 1);
+            data.max = parseInt(getTag('max') || 100);
+            
+            // Priority 2: Extract from JSON content (Legacy / App-specific)
+            try {
+                const parsed = JSON.parse(event.content);
+                if (parsed.type === "EVENT_MARKETPLACE") {
+                    data.id = data.id || parsed.id;
+                    data.title = data.title || parsed.title;
+                    data.description = data.description || parsed.description;
+                    data.price = data.price || parsed.price;
+                    data.min = data.min || parsed.min;
+                    data.max = data.max || parsed.max;
+                }
+            } catch (e) {}
+
             const id = data.id || 'demo-event';
             const stats = EVENT_STATS[id] || { count: 0, reserved: false, participants: [] };
             const min = data.min || 1;
@@ -1947,7 +1982,7 @@
                     <button class="btn-copy-link" title="Copiar enlace a esta nota (nevent)">📋</button>
                     <button class="btn-inspect" title="Ver contenido original (JSON)">[JSON]</button>
                 </div>
-                ${renderContent(event.content)}
+                ${renderContent(event)}
                 <div class="media-preview hidden"></div>
                 <div class="translation-block hidden"></div>
                 <div class="inspector-panel">${JSON.stringify(event, null, 4)}</div>
@@ -2310,11 +2345,16 @@
             };
 
             const event = {
-                kind: 1, // Using Kind 1 for now for simplicity, can change to 31924
+                kind: 30402, // NIP-99 Classified Listing (Addressable)
                 created_at: Math.floor(Date.now() / 1000),
                 content: JSON.stringify(marketplaceData),
                 tags: [
-                    ['d', eventId], // NIP-33 style identifier
+                    ['d', eventId],
+                    ['title', title],
+                    ['description', desc],
+                    ['price', price.toString(), 'sats'],
+                    ['min', min.toString()],
+                    ['max', max.toString()],
                     ['t', 'event-marketplace']
                 ]
             };
@@ -2419,10 +2459,17 @@
                 max: 50
             };
             const event = {
-                kind: 1,
+                kind: 30402,
                 pubkey: userPubKey || '0000000000000000000000000000000000000000000000000000000000000000',
                 created_at: Math.floor(Date.now() / 1000),
                 content: JSON.stringify(demo),
+                tags: [
+                    ['d', demo.id],
+                    ['title', demo.title],
+                    ['price', demo.price.toString(), 'sats'],
+                    ['min', demo.min.toString()],
+                    ['max', demo.max.toString()]
+                ],
                 id: 'demo-' + Date.now()
             };
             feedList.prepend(createEventCard(event));
@@ -2470,7 +2517,7 @@
 
         // Fetch a single event, trying hint relays first, then falling back to currentRelay
         async function fetchEventFromHints(hexId, hintRelays, prependOnly) {
-            const filter = [{ kinds: [1], ids: [hexId], limit: 1 }];
+            const filter = [{ kinds: [1, 30402, 31923, 31924], ids: [hexId], limit: 1 }];
             let found = false;
 
             // Build list: hint relays first, then active relay as fallback
@@ -2548,7 +2595,7 @@
                 renderProfileHeader(currentProfilePubkey);
             }
 
-            let filter = { kinds: [1], limit: 40 };
+            let filter = { kinds: [1, 30402, 31923, 31924], limit: 40 };
             if (feedMode === 'following') {
                 if (followedPubkeys.size === 0) {
                     feedList.innerHTML = '<div class="dim" style="padding: 2rem; text-align: center;">No sigues a nadie todavía. ¡Explora el Global!</div>';
@@ -2558,7 +2605,7 @@
             } else if (feedMode === 'profile' && currentProfilePubkey) {
                 filter.authors = [currentProfilePubkey];
             } else if (feedMode === 'event' && currentEventId) {
-                filter = { kinds: [1], ids: [currentEventId], limit: 1 };
+                filter = { kinds: [1, 30402, 31923, 31924], ids: [currentEventId], limit: 1 };
             }
 
 
