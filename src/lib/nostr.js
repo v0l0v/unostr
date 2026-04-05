@@ -25,7 +25,28 @@ export class NostrClient {
 
         this.onLog('log_connecting', url);
         try {
-            this.relay = await Relay.connect(url);
+            // NIP-42 Auth Handler
+            const onauth = async (challenge) => {
+                this.onLog('log_auth_nip42_start');
+                try {
+                    const authEvent = {
+                        kind: 22242,
+                        created_at: Math.floor(Date.now() / 1000),
+                        tags: [
+                            ['relay', url],
+                            ['challenge', challenge]
+                        ],
+                        content: ''
+                    };
+                    const signed = await this.signEvent(authEvent);
+                    await this.relay.auth(signed);
+                    this.onLog('log_auth_nip42_ok');
+                } catch (e) {
+                    this.onLog('log_error', 'NIP-42 Auth failed: ' + e.message, 'warn');
+                }
+            };
+
+            this.relay = await Relay.connect(url, { onauth });
             this.onLog('log_connected', url);
             this.onStatusChange('online');
             return true;
@@ -85,8 +106,10 @@ export class NostrClient {
     async publish(event) {
         if (!this.relay) throw new Error('No conectado al relay');
         try {
+            // Using a Promise to handle the return from relay.publish(event)
+            // In nostr-tools v2, publish returns a promise that resolves on OK
             await this.relay.publish(event);
-            this.onLog('log_publish_success');
+            this.onLog('log_publish_success', ` [ID: ${event.id.substring(0,8)}]`);
         } catch (e) {
             this.onLog('log_error', 'Fallo al publicar: ' + e.message, 'error');
             throw e;

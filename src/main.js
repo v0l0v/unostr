@@ -10,6 +10,7 @@ let feedMode = 'global'; // 'global', 'following', 'profile', 'event'
 let currentProfilePubkey = null;
 let currentEventId = null;
 let followedPubkeys = new Set(JSON.parse(localStorage.getItem('followed_pubkeys') || '[]'));
+let btcPrice = 60000;
 
 // DOM Elements
 const loginBtn = document.getElementById('login-btn');
@@ -346,6 +347,29 @@ window.toggleOrganizerMode = (force) => {
     organizerModeBtn.classList.toggle('active', organizerMode);
     organizerModeBtn.textContent = organizerMode ? '⚙️ MODO_ORGANIZADOR [ON]' : '⚙️ MODO_ORGANIZADOR [OFF]';
     eventCreatorArea.classList.toggle('hidden', !organizerMode);
+    if (organizerMode) refreshPriceOracle();
+};
+
+async function refreshPriceOracle() {
+    const oracleBox = document.getElementById('price-oracle-status');
+    oracleBox.textContent = '[ORÁCULO] CONSULTANDO COTIZACIÓN...';
+    btcPrice = await marketplace.getCurrentPrice();
+    oracleBox.innerHTML = `[ORÁCULO] BTC: <span class="text-accent-cyan">${btcPrice.toLocaleString()} EUR</span> // <span class="text-accent-amber">1 SATS ≈ ${(1/btcPrice * 100000000).toFixed(6)} SATS/€</span>`;
+}
+
+// Price Sync listeners
+document.getElementById('event-eur-input').oninput = (e) => {
+    const eur = parseFloat(e.target.value);
+    if (!isNaN(eur)) {
+        document.getElementById('event-price-input').value = marketplace.eurToSats(eur, btcPrice);
+    }
+};
+
+document.getElementById('event-price-input').oninput = (e) => {
+    const sats = parseInt(e.target.value);
+    if (!isNaN(sats)) {
+        document.getElementById('event-eur-input').value = marketplace.satsToEur(sats, btcPrice).toFixed(2);
+    }
 };
 
 organizerModeBtn.onclick = () => window.toggleOrganizerMode();

@@ -63,9 +63,27 @@ export class MarketplaceManager {
         return Math.min(100, (stats.count / max) * 100);
     }
 
-    formatFiat(priceSats) {
-        // Mock conversion (100k sats approx 60 eur)
-        return (priceSats * 0.0006).toFixed(2);
+    async getCurrentPrice() {
+        try {
+            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur');
+            const data = await res.json();
+            return data.bitcoin.eur;
+        } catch (e) {
+            console.error('Error fetching BTC price:', e);
+            return 60000; // Fallback
+        }
+    }
+
+    satsToEur(sats, btcPrice) {
+        return (sats / 100000000) * btcPrice;
+    }
+
+    eurToSats(eur, btcPrice) {
+        return Math.floor((eur / btcPrice) * 100000000);
+    }
+
+    formatFiat(priceSats, btcPrice = 60000) {
+        return this.satsToEur(priceSats, btcPrice).toFixed(2);
     }
 }
 
