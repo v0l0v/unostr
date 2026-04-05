@@ -38,6 +38,14 @@ const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
 ui.setLanguage(localStorage.getItem('lang') || 'es');
 ui.log('log_init');
 
+if (nostr.userPubKey) {
+    ui.toggleElement('post-area', true);
+    ui.toggleElement('organizer-area', true);
+    loginBtn.classList.add('hidden');
+    manualToggleBtn.classList.add('hidden');
+    fetchFollows(nostr.userPubKey);
+}
+
 // Relay Scroller
 const PRESET_RELAYS = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.nostr.band', 'wss://purplepag.es'];
 function initRelayScroller() {
@@ -114,6 +122,7 @@ nostr.setLogHandler((key, extra, type) => ui.log(key, extra, type));
 loginBtn.onclick = async () => {
     await nostr.authenticateNIP07();
     ui.toggleElement('post-area', true);
+    ui.toggleElement('organizer-area', true); // Show the toggle button
     loginBtn.classList.add('hidden');
     manualToggleBtn.classList.add('hidden');
     if (nostr.userPubKey) fetchFollows(nostr.userPubKey);
@@ -123,6 +132,7 @@ manualAuthBtn.onclick = () => {
     nostr.authenticateManual(nsecInput.value.trim());
     ui.toggleElement('manual-login-area', false);
     ui.toggleElement('post-area', true);
+    ui.toggleElement('organizer-area', true); // Show the toggle button
     loginBtn.classList.add('hidden');
     manualToggleBtn.classList.add('hidden');
     if (nostr.userPubKey) fetchFollows(nostr.userPubKey);
