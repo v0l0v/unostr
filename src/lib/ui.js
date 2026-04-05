@@ -48,7 +48,18 @@ export const TRANSLATIONS = {
         log_follow_ok: 'Successfully added to following.',
         log_unfollow_ok: 'Successfully removed from following.',
         log_profile_init: 'Fetching profile: ',
-        log_profile_ok: 'Profile loaded: '
+        log_profile_ok: 'Profile loaded: ',
+        log_oracle_sync: 'BTC/EUR Oracle synchronized: ',
+        log_oracle_fail: 'Oracle Sync Failed. Using fallback rate.',
+        section_org_title: '📦 NIP-99_CONSTRUCTOR',
+        label_event_title: 'EVENT TITLE',
+        label_event_desc: 'DESCRIPTION (HUMAN READABLE)',
+        label_price_sats: 'PRICE [SATS]',
+        label_min_pax: 'MINIMUM [PAX]',
+        label_max_pax: 'MAXIMUM [PAX]',
+        btn_publish_event: 'PUBLISH_EVENT_TO_NETWORK',
+        placeholder_title: 'Event name...',
+        placeholder_desc: 'Tell the world about it...'
     },
     es: {
         conn_not_connected: 'NO_CONECTADO',
@@ -99,7 +110,18 @@ export const TRANSLATIONS = {
         log_follow_ok: 'Usuario añadido a seguidos correctamente.',
         log_unfollow_ok: 'Usuario eliminado de seguidos correctamente.',
         log_profile_init: 'Buscando perfil: ',
-        log_profile_ok: 'Perfil cargado: '
+        log_profile_ok: 'Perfil cargado: ',
+        log_oracle_sync: 'Oráculo BTC/EUR sincronizado: ',
+        log_oracle_fail: 'Fallo al sincronizar oráculo. Usando tasa de respaldo.',
+        section_org_title: '📦 CONSTRUCTOR_NIP-99',
+        label_event_title: 'TÍTULO DEL EVENTO',
+        label_event_desc: 'DESCRIPCIÓN (LEGIBLE POR HUMANOS)',
+        label_price_sats: 'PRECIO [SATS]',
+        label_min_pax: 'MÍNIMO [PAX]',
+        label_max_pax: 'MÁXIMO [PAX]',
+        btn_publish_event: 'PUBLICAR_EVENTO_EN_RED',
+        placeholder_title: 'Nombre del evento...',
+        placeholder_desc: 'Cuéntale al mundo de qué trata...'
     }
 };
 

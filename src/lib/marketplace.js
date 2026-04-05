@@ -1,6 +1,8 @@
 export class MarketplaceManager {
     constructor() {
         this.eventStats = JSON.parse(localStorage.getItem('event_stats') || '{}');
+        this.btcPrice = 0;
+        this.lastUpdate = 0;
     }
 
     getEventData(event) {
@@ -42,6 +44,22 @@ export class MarketplaceManager {
     saveStats() {
         localStorage.setItem('event_stats', JSON.stringify(this.eventStats));
     }
+    
+    async updatePrice() {
+        try {
+            // Using Binance Public API (No Auth)
+            const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCEUR');
+            if (response.ok) {
+                const data = await response.json();
+                this.btcPrice = parseFloat(data.price);
+                this.lastUpdate = Date.now();
+                return true;
+            }
+        } catch (e) {
+            console.error('Oracle Sync Failed:', e);
+        }
+        return false;
+    }
 
     reservePlacement(eventId, pubkey) {
         if (!this.eventStats[eventId]) {
@@ -64,8 +82,10 @@ export class MarketplaceManager {
     }
 
     formatFiat(priceSats) {
-        // Simple fallback calculation
-        return (priceSats * 0.0006).toFixed(2);
+        // If price is 0 or sync failed, we use a fallback rate (e.g., 60,000 EUR)
+        const currentPrice = this.btcPrice || 60000;
+        const btcAmount = priceSats / 100000000;
+        return (btcAmount * currentPrice).toFixed(2);
     }
 }
 

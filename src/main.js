@@ -40,6 +40,18 @@ const initialLang = localStorage.getItem('lang') || 'es';
 ui.setLanguage(initialLang);
 ui.log('log_init');
 
+// Price Oracle Initialization
+async function initOracle() {
+    const success = await marketplace.updatePrice();
+    if (success) {
+        ui.log('log_oracle_sync', `${marketplace.btcPrice.toLocaleString()} EUR`);
+    } else {
+        ui.log('log_oracle_fail', '', 'error');
+    }
+}
+initOracle();
+setInterval(initOracle, 300000); // Update every 5 minutes
+
 // Lang Toggle Handlers
 document.getElementById('lang-en').onclick = () => ui.setLanguage('en');
 document.getElementById('lang-es').onclick = () => ui.setLanguage('es');
@@ -216,6 +228,10 @@ window.addEventListener('langChanged', () => {
     } else {
         nostr.onStatusChange('offline');
     }
+    // Refresh price preview if it has a value
+    if (creatorPriceInput && creatorPriceInput.value) {
+        pricePreview.textContent = `≈ ${marketplace.formatFiat(parseInt(creatorPriceInput.value))} EUR`;
+    }
 });
 
 // UI Custom Events
@@ -372,6 +388,14 @@ window.toggleOrganizerMode = (force) => {
 };
 
 organizerModeBtn.onclick = () => window.toggleOrganizerMode();
+
+const creatorPriceInput = document.getElementById('event-price-input');
+const pricePreview = document.getElementById('event-price-preview');
+
+creatorPriceInput.oninput = () => {
+    const sats = parseInt(creatorPriceInput.value) || 0;
+    pricePreview.textContent = `≈ ${marketplace.formatFiat(sats)} EUR`;
+};
 
 document.getElementById('publish-event-btn').onclick = async () => {
     const title = document.getElementById('event-title-input').value;
