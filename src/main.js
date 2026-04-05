@@ -41,9 +41,22 @@ ui.log('log_init');
 if (nostr.userPubKey) {
     ui.toggleElement('post-area', true);
     ui.toggleElement('organizer-area', true);
-    loginBtn.classList.add('hidden');
-    manualToggleBtn.classList.add('hidden');
+    updateIdentityUI(); // Call the new UI updater
     fetchFollows(nostr.userPubKey);
+}
+
+function updateIdentityUI() {
+    const badge = document.getElementById('profile-badge');
+    if (nostr.userPubKey) {
+        const npub = nip19.npubEncode(nostr.userPubKey);
+        badge.textContent = `[ID: ${npub.substring(0, 8)}...]`;
+        badge.classList.remove('hidden');
+        badge.onclick = () => {
+            window.dispatchEvent(new CustomEvent('openProfile', { detail: { pubkey: nostr.userPubKey, npub } }));
+        };
+        loginBtn.classList.add('hidden');
+        manualToggleBtn.classList.add('hidden');
+    }
 }
 
 // Relay Scroller
@@ -122,9 +135,8 @@ nostr.setLogHandler((key, extra, type) => ui.log(key, extra, type));
 loginBtn.onclick = async () => {
     await nostr.authenticateNIP07();
     ui.toggleElement('post-area', true);
-    ui.toggleElement('organizer-area', true); // Show the toggle button
-    loginBtn.classList.add('hidden');
-    manualToggleBtn.classList.add('hidden');
+    ui.toggleElement('organizer-area', true);
+    updateIdentityUI(); // Show user ID in header
     if (nostr.userPubKey) fetchFollows(nostr.userPubKey);
 };
 
@@ -132,10 +144,35 @@ manualAuthBtn.onclick = () => {
     nostr.authenticateManual(nsecInput.value.trim());
     ui.toggleElement('manual-login-area', false);
     ui.toggleElement('post-area', true);
-    ui.toggleElement('organizer-area', true); // Show the toggle button
-    loginBtn.classList.add('hidden');
-    manualToggleBtn.classList.add('hidden');
+    ui.toggleElement('organizer-area', true);
+    updateIdentityUI(); // Show user ID in header
     if (nostr.userPubKey) fetchFollows(nostr.userPubKey);
+};
+
+publishBtn.onclick = async () => {
+    const content = postContent.value.trim();
+    if (!content) return;
+
+    publishBtn.disabled = true;
+    publishBtn.textContent = TRANSLATIONS[ui.currentLang].btn_signing;
+    
+    try {
+        const eventTemplate = {
+            kind: 1,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [],
+            content: content
+        };
+        const signed = await nostr.signEvent(eventTemplate);
+        await nostr.publish(signed);
+        postContent.value = '';
+        ui.log('log_publish_success');
+    } catch (e) {
+        ui.log('log_error', e.message, 'error');
+    } finally {
+        publishBtn.disabled = false;
+        publishBtn.textContent = TRANSLATIONS[ui.currentLang].btn_sign_broadcast;
+    }
 };
 
 logoutBtn.onclick = () => {
