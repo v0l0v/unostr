@@ -1874,23 +1874,25 @@
             const tags = event.tags || [];
             const getTag = (k) => (tags.find(t => t[0] === k) || [])[1];
             
-            data.id = getTag('d');
-            data.title = getTag('title') || getTag('name');
-            data.description = getTag('description') || getTag('summary');
-            data.price = parseInt(getTag('price') || 0);
-            data.min = parseInt(getTag('min') || 1);
-            data.max = parseInt(getTag('max') || 100);
+            data.id = data.id || getTag('d');
+            data.title = data.title || getTag('title') || getTag('name') || getTag('summary');
+            data.description = data.description || getTag('description') || getTag('summary') || event.content;
+            data.price = data.price || parseInt(getTag('price') || 0);
+            data.min = data.min || parseInt(getTag('min') || 1);
+            data.max = data.max || parseInt(getTag('max') || 100);
             
             // Priority 2: Extract from JSON content (Legacy / App-specific)
             try {
-                const parsed = JSON.parse(event.content);
-                if (parsed.type === "EVENT_MARKETPLACE") {
-                    data.id = data.id || parsed.id;
-                    data.title = data.title || parsed.title;
-                    data.description = data.description || parsed.description;
-                    data.price = data.price || parsed.price;
-                    data.min = data.min || parsed.min;
-                    data.max = data.max || parsed.max;
+                if (event.content.startsWith('{')) {
+                    const parsed = JSON.parse(event.content);
+                    if (parsed.type === "EVENT_MARKETPLACE") {
+                        data.id = data.id || parsed.id;
+                        data.title = data.title || parsed.title;
+                        data.description = data.description || parsed.description;
+                        data.price = data.price || parsed.price;
+                        data.min = data.min || parsed.min;
+                        data.max = data.max || parsed.max;
+                    }
                 }
             } catch (e) {}
 
@@ -2347,10 +2349,11 @@
             const event = {
                 kind: 30402, // NIP-99 Classified Listing (Addressable)
                 created_at: Math.floor(Date.now() / 1000),
-                content: JSON.stringify(marketplaceData),
+                content: desc, // Human readable for other clients!
                 tags: [
                     ['d', eventId],
                     ['title', title],
+                    ['summary', title],
                     ['description', desc],
                     ['price', price.toString(), 'sats'],
                     ['min', min.toString()],
@@ -2462,13 +2465,16 @@
                 kind: 30402,
                 pubkey: userPubKey || '0000000000000000000000000000000000000000000000000000000000000000',
                 created_at: Math.floor(Date.now() / 1000),
-                content: JSON.stringify(demo),
+                content: demo.description,
                 tags: [
                     ['d', demo.id],
                     ['title', demo.title],
+                    ['summary', demo.title],
                     ['price', demo.price.toString(), 'sats'],
                     ['min', demo.min.toString()],
-                    ['max', demo.max.toString()]
+                    ['max', demo.max.toString()],
+                    ['t', 'event-marketplace'],
+                    ['t', 'demo']
                 ],
                 id: 'demo-' + Date.now()
             };
