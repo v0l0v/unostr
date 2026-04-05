@@ -2,6 +2,7 @@ import { nostr } from './lib/nostr';
 import { ui, TRANSLATIONS } from './lib/ui';
 import { marketplace } from './lib/marketplace';
 import { createEventCard } from './components/EventCard';
+import { createSmartWidget } from './components/SmartWidget';
 import { nip19 } from 'nostr-tools';
 
 // State
@@ -10,7 +11,6 @@ let feedMode = 'global'; // 'global', 'following', 'profile', 'event'
 let currentProfilePubkey = null;
 let currentEventId = null;
 let followedPubkeys = new Set(JSON.parse(localStorage.getItem('followed_pubkeys') || '[]'));
-let btcPrice = 60000;
 
 // DOM Elements
 const loginBtn = document.getElementById('login-btn');
@@ -36,8 +36,16 @@ const closePaymentBtn = document.getElementById('close-payment-modal');
 const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
 
 // Initial Setup
-ui.setLanguage(localStorage.getItem('lang') || 'es');
+const initialLang = localStorage.getItem('lang') || 'es';
+ui.setLanguage(initialLang);
 ui.log('log_init');
+
+// Lang Toggle Handlers
+document.getElementById('lang-en').onclick = () => ui.setLanguage('en');
+document.getElementById('lang-es').onclick = () => ui.setLanguage('es');
+
+// Manual Login Toggle
+manualToggleBtn.onclick = () => ui.toggleElement('manual-login-area');
 
 if (nostr.userPubKey) {
     ui.toggleElement('post-area', true);
@@ -85,18 +93,23 @@ function startFeedSubscription() {
     if (currentSub) currentSub.close();
     feedList.innerHTML = '';
 
-    let filter = { kinds: [1, 30402], limit: 40 };
+    let filter = { kinds: [1, 30402, 30033], limit: 40 };
     if (feedMode === 'following' && followedPubkeys.size > 0) {
         filter.authors = [...followedPubkeys];
     } else if (feedMode === 'profile' && currentProfilePubkey) {
         filter.authors = [currentProfilePubkey];
     } else if (feedMode === 'event' && currentEventId) {
-        filter = { kinds: [1, 30402], ids: [currentEventId], limit: 1 };
+        filter = { kinds: [1, 30402, 30033], ids: [currentEventId], limit: 1 };
     }
 
     currentSub = nostr.subscribe([filter], {
         onevent(event) {
-            const card = createEventCard(event);
+            let card;
+            if (event.kind === 30033) {
+                card = createSmartWidget(event);
+            } else {
+                card = createEventCard(event);
+            }
             feedList.prepend(card);
             if (feedList.childElementCount > 40) feedList.removeChild(feedList.lastChild);
         },
@@ -195,6 +208,15 @@ async function fetchFollows(pubkey) {
         }
     });
 }
+
+window.addEventListener('langChanged', () => {
+    // Force refresh status badge translation
+    if (nostr.relay) {
+        nostr.onStatusChange('online');
+    } else {
+        nostr.onStatusChange('offline');
+    }
+});
 
 // UI Custom Events
 window.addEventListener('openProfile', (e) => {
@@ -347,29 +369,6 @@ window.toggleOrganizerMode = (force) => {
     organizerModeBtn.classList.toggle('active', organizerMode);
     organizerModeBtn.textContent = organizerMode ? '⚙️ MODO_ORGANIZADOR [ON]' : '⚙️ MODO_ORGANIZADOR [OFF]';
     eventCreatorArea.classList.toggle('hidden', !organizerMode);
-    if (organizerMode) refreshPriceOracle();
-};
-
-async function refreshPriceOracle() {
-    const oracleBox = document.getElementById('price-oracle-status');
-    oracleBox.textContent = '[ORÁCULO] CONSULTANDO COTIZACIÓN...';
-    btcPrice = await marketplace.getCurrentPrice();
-    oracleBox.innerHTML = `[ORÁCULO] BTC: <span class="text-accent-cyan">${btcPrice.toLocaleString()} EUR</span> // <span class="text-accent-amber">1 SATS ≈ ${(1/btcPrice * 100000000).toFixed(6)} SATS/€</span>`;
-}
-
-// Price Sync listeners
-document.getElementById('event-eur-input').oninput = (e) => {
-    const eur = parseFloat(e.target.value);
-    if (!isNaN(eur)) {
-        document.getElementById('event-price-input').value = marketplace.eurToSats(eur, btcPrice);
-    }
-};
-
-document.getElementById('event-price-input').oninput = (e) => {
-    const sats = parseInt(e.target.value);
-    if (!isNaN(sats)) {
-        document.getElementById('event-eur-input').value = marketplace.satsToEur(sats, btcPrice).toFixed(2);
-    }
 };
 
 organizerModeBtn.onclick = () => window.toggleOrganizerMode();

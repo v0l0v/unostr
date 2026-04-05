@@ -127,6 +127,9 @@ export class UIManager {
         // Trigger visual updates for lang buttons
         document.getElementById('lang-en')?.classList.toggle('active', lang === 'en');
         document.getElementById('lang-es')?.classList.toggle('active', lang === 'es');
+
+        // Notify app to refresh non-i18n elements
+        window.dispatchEvent(new CustomEvent('langChanged', { detail: { lang } }));
     }
 
     log(msgKey, extra = '', type = 'info') {

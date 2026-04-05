@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="/src/styles/main.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body class="bg-bg-base text-text-primary font-mono min-h-screen flex flex-col antialiased selection:bg-accent-cyan selection:text-bg-base">
     <header class="border-b border-border-dim px-8 py-4 flex justify-between items-center bg-bg-surface sticky top-0 z-[100]">
@@ -98,25 +99,12 @@
         <section id="event-creator-area" class="card hidden">
             <div class="section-title">📦 CONSTRUCTOR_NIP-99</div>
             <div class="flex flex-col gap-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[0.6rem] font-black text-text-dim uppercase tracking-widest pl-1">Precio en Euros (€)</label>
-                        <input type="number" id="event-eur-input" class="w-full bg-bg-base border border-border-dim rounded p-3 text-accent-cyan font-bold" placeholder="EJ: 50">
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[0.6rem] font-black text-text-dim uppercase tracking-widest pl-1">Precio en SATS (⚡)</label>
-                        <input type="number" id="event-price-input" class="w-full bg-bg-base border border-border-dim rounded p-3 text-accent-amber font-bold" placeholder="EJ: 100000">
-                    </div>
-                </div>
-                <div id="price-oracle-status" class="text-[0.55rem] text-text-dim font-bold uppercase tracking-widest px-1">
-                    [ORÁCULO] Cargando cotización BTC...
-                </div>
                 <input type="text" id="event-title-input" class="w-full bg-bg-base border border-border-dim rounded p-3" placeholder="TÍTULO DEL EVENTO">
                 <textarea id="event-desc-input" class="w-full bg-bg-base border border-border-dim rounded p-3" placeholder="DESCRIPCIÓN (HUMAN READABLE)" rows="3"></textarea>
                 <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="text-[0.6rem] text-text-dim block uppercase font-bold mb-1">PRECIO [SATS]</label>
-                        <input type="number" id="event-price-input" class="w-full bg-bg-base border border-border-dim rounded p-2">
+                        <input type="number" id="event-price-input" class="w-full bg-bg-base border border-border-dim rounded p-2" placeholder="0">
                     </div>
                     <div>
                         <label class="text-[0.6rem] text-text-dim block uppercase font-bold mb-1">MÍNIMO [PAX]</label>
