@@ -46,7 +46,9 @@ export const TRANSLATIONS = {
         btn_follow: 'Follow',
         btn_unfollow: 'Unfollow',
         log_follow_ok: 'Successfully added to following.',
-        log_unfollow_ok: 'Successfully removed from following.'
+        log_unfollow_ok: 'Successfully removed from following.',
+        log_profile_init: 'Fetching profile: ',
+        log_profile_ok: 'Profile loaded: '
     },
     es: {
         conn_not_connected: 'NO_CONECTADO',
@@ -95,7 +97,9 @@ export const TRANSLATIONS = {
         btn_follow: 'Seguir',
         btn_unfollow: 'Dejar de seguir',
         log_follow_ok: 'Usuario añadido a seguidos correctamente.',
-        log_unfollow_ok: 'Usuario eliminado de seguidos correctamente.'
+        log_unfollow_ok: 'Usuario eliminado de seguidos correctamente.',
+        log_profile_init: 'Buscando perfil: ',
+        log_profile_ok: 'Perfil cargado: '
     }
 };
 
@@ -155,9 +159,42 @@ export class UIManager {
     }
 
     escapeHTML(str) {
+        if (!str) return '';
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    manageDynamicTab(type, id, labelHint, onActivate) {
+        const tabId = type === 'profile' ? 'feed-profile-tab' : 'feed-event-tab';
+        const container = document.getElementById('feed-tabs-container');
+        if (!container) return;
+
+        let tab = document.getElementById(tabId);
+        if (!tab) {
+            tab = document.createElement('button');
+            tab.id = tabId;
+            tab.className = 'tab px-6 py-2 text-[0.75rem] font-bold uppercase border-b-2 border-transparent text-text-dim hover:text-accent-cyan transition-all';
+            container.appendChild(tab);
+        }
+
+        tab.onclick = onActivate;
+
+        const label = labelHint || id.substring(0, 8);
+        const prefix = type === 'profile' ? '@' : 'ID:';
+        tab.innerHTML = `<span class="text-accent-amber text-[0.6rem] mr-1">${prefix}</span>${label} <span class="ml-2 opacity-50 hover:opacity-100 hover:text-accent-red transition-all cursor-pointer" onclick="window.ui.closeDynamicTab(event, '${type}')">×</span>`;
+        
+        return tab;
+    }
+
+    closeDynamicTab(e, type) {
+        if (e) e.stopPropagation();
+        const tabId = type === 'profile' ? 'feed-profile-tab' : 'feed-event-tab';
+        const tab = document.getElementById(tabId);
+        if (tab) tab.remove();
+        
+        // Dispatch custom event for main.js to handle fallback
+        window.dispatchEvent(new CustomEvent('tabClosed', { detail: { type } }));
     }
 }
 

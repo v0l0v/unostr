@@ -53,6 +53,26 @@
             <button id="connect-btn" class="btn primary w-full" data-i18n="btn_establish_conn">Establecer_Conexión</button>
         </section>
 
+        <!-- Profile Drawer -->
+        <section id="profile-drawer" class="card hidden overflow-hidden !p-0">
+            <div id="profile-banner" class="h-32 bg-bg-hover bg-cover bg-center"></div>
+            <div class="px-6 -mt-10 flex items-end gap-4 mb-4">
+                <div id="profile-picture" class="w-20 h-20 bg-bg-surface border-4 border-bg-base rounded overflow-hidden"></div>
+                <div class="mb-2">
+                    <h2 id="profile-name-full" class="text-lg font-bold text-accent-cyan">---</h2>
+                    <span id="profile-nip05" class="text-[0.7rem] text-text-dim uppercase tracking-wider font-bold"></span>
+                </div>
+            </div>
+            <div id="profile-about" class="px-6 text-sm text-text-primary mb-4 whitespace-pre-wrap"></div>
+            <div id="profile-extra-area" class="px-6 pb-6 border-t border-border-dim pt-4 flex flex-col gap-1 text-[0.75rem] text-text-dim">
+                <span id="profile-website"></span>
+            </div>
+            <div class="flex border-t border-border-dim bg-black/20 p-4 gap-4">
+                <button id="logout-btn" class="btn border-accent-red text-accent-red text-[0.7rem] px-4 flex-1" data-i18n="btn_logout">Cerrar Sesión</button>
+                <button id="close-profile-btn" class="btn text-[0.7rem] px-4 flex-1" data-i18n="btn_close">Cerrar</button>
+            </div>
+        </section>
+
         <!-- Authenticated Areas (Hidden by default) -->
         <section id="manual-login-area" class="card hidden">
             <div class="section-title" data-i18n="login_manual_title">Autenticación Manual</div>
@@ -109,7 +129,28 @@
         </section>
     </main>
 
-    <footer class="h-[200px] bg-black border-t border-accent-cyan flex flex-col overflow-hidden">
+    <footer class="h-[200px] bg-black border-t border-accent-cyan flex flex-col overflow-hidden relative">
+        <!-- Payment Modal -->
+        <div id="payment-modal" class="modal-overlay fixed inset-x-0 bottom-[200px] top-0 bg-black/90 backdrop-blur-sm z-[2000] hidden flex items-center justify-center p-4">
+            <div class="modal-content bg-bg-surface border border-accent-cyan max-w-md w-full p-8 relative shadow-[0_0_50px_rgba(0,242,255,0.15)]">
+                <span id="close-payment-modal" class="modal-close absolute top-2 right-4 text-2xl text-text-dim cursor-pointer hover:text-accent-red">×</span>
+                <div class="text-lg font-extrabold text-accent-cyan uppercase mb-2" id="modal-event-title">EVENTO_RESERVADO</div>
+                <p id="modal-event-desc" class="text-sm text-text-secondary mb-6"></p>
+                
+                <div class="bg-white p-4 w-48 h-48 mx-auto mb-6 flex items-center justify-center rounded">
+                    <img id="qr-img" src="" alt="QR" class="max-w-full">
+                </div>
+                
+                <div class="text-center mb-8">
+                    <div class="text-xl font-extrabold text-accent-amber"><span id="modal-event-price">0</span> SATS</div>
+                    <div id="modal-event-fiat" class="text-[0.7rem] text-text-dim uppercase font-bold tracking-widest mt-1">≈ 0.00 €</div>
+                </div>
+                
+                <button id="confirm-payment-btn" class="btn primary w-full py-4 text-sm font-black tracking-widest">CONFIRMAR_PAGO_MOCK</button>
+                <div id="payment-status-text" class="hidden text-center mt-4 text-accent-amber text-xs font-bold animate-pulse uppercase tracking-wider">Esperando_bloque_bitcoin...</div>
+            </div>
+        </div>
+
         <div class="console-header px-4 py-2 bg-bg-surface flex justify-between items-center border-b border-border-dim">
             <span class="text-[0.6rem] font-extrabold text-accent-cyan tracking-widest uppercase" data-i18n="console_title">Consola del Sistema</span>
             <span id="console-status" class="text-[0.6rem] font-extrabold text-accent-cyan" data-i18n="console_ready">READY</span>
